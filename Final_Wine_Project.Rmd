@@ -1,0 +1,3636 @@
+---
+title: "Final Project Wine Quality Analysis"
+output: html_document
+date: "2024-04-28"
+---
+
+Problem Statement:
+
+Primary objective is to understand the factors contributing to its overall quality. With a dataset comprising 1599 observations and 12 independent variables, including acidity, sugar content, sulfur dioxide levels, and alcohol concentration.
+
+
+We aim to investigate how these chemical components influence the wine's quality rating, which ranges from 0 to 10. 
+
+
+By identifying the key contributors to wine quality, we strive to provide insights that can assist winemakers in enhancing their production processes and crafting superior-quality wines.
+
+
+
+Questions:
+
+1) Explain the data collection process (10 points)
+
+link: 
+
+https://www.kaggle.com/datasets/yasserh/wine-quality-dataset
+
+
+Updation frequency: Annually 
+
+
+Description:
+
+This dataset pertains to red variations of Portuguese "Vinho Verde" wine. It contains information about the quantities of different chemicals found in the wine and how they influence its overall quality. The dataset can be approached as either a classification or regression task. However, it's important to note that the classes are ordered and not evenly distributed; for instance, there are more instances of normal-quality wines compared to excellent or poor ones. 
+
+Your objective is to use the provided data to predict the quality of wine. This project presents a straightforward yet demanding task: forecasting the quality of wine.
+
+
+This data frame contains the following columns:
+
+Input variables (based on physicochemical tests):
+
+1 - fixed acidity
+
+2 - volatile acidity
+
+3 - citric acid
+
+4 - residual sugar
+
+5 - chlorides
+
+6 - free sulfur dioxide
+
+7 - total sulfur dioxide
+
+8 - density
+
+9 - pH
+
+10 - sulphates
+
+11 - alcohol
+
+Output variable (based on sensory data):
+
+12 - quality (score between 0 and 10)
+
+
+Objective:
+Understand the Dataset & cleanup (if required).
+
+
+Build classification models to predict the wine quality.
+
+
+Also fine-tune the hyperparameters & compare the evaluation metrics of various classification algorithms.
+
+```{r}
+
+# Library to read CSV file
+library(readr)
+
+# Data visualization libraries
+library(ggplot2)     # ggplot2 for creating versatile plots
+library(ggcorrplot)  # ggcorrplot for visualizing correlation matrices
+library(ggridges)    # ggridges for creating ridge plots
+library(ggvis)       # ggvis for interactive web-based visualizations
+library(ggthemes)    # ggthemes for additional plot themes
+library(cowplot)     # cowplot for arranging and annotating plots
+library(gganimate)   # gganimate for creating animated plots
+
+# Data manipulation and analysis libraries
+library(caret)       # caret for machine learning model building and evaluation
+library(dplyr)       # dplyr for data manipulation
+library(tidyverse)   # tidyverse for data wrangling
+library(GGally)      # GGally for plot matrix visualizations
+
+
+options(scipen=999)
+library(readr) # Library to read CSV file
+library(ggplot2)
+# Load necessary libraries
+library(ggplot2)
+library(ggcorrplot)
+library(caret)
+library(scatterplot3d)
+library(SciViews)
+library(car)
+library(lattice)
+library(GGally)
+# load packages
+library(lattice)
+library(ggplot2)
+
+
+library(ggridges)
+library(ggvis)
+library(ggthemes)
+library(cowplot)
+library(gapminder)
+library(gganimate)
+library(dplyr)
+library(tidyverse)
+
+# Additional visualization libraries
+library(scatterplot3d)  # scatterplot3d for 3D scatter plots
+library(SciViews)       # SciViews for scientific data visualization
+library(car)            # car for additional regression plots
+library(lattice)        # lattice for lattice plots
+library(grid)           # grid for low-level plotting functions
+library(gridExtra)      # gridExtra for arranging multiple plots
+library(RColorBrewer)  # RColorBrewer for additional color palettes
+library(gapminder)     # gapminder for example dataset
+```
+Data Frame:
+[1] Datatypes
+[2] Dataframe view
+```{r}
+
+# Read the CSV file
+df <- read_csv("C:/Rutgers/Subjects/Spring Sem/Multivariate Analysis/Data/wine.csv")
+
+# Retrieve the full column specification
+spec(df)
+
+df
+```
+
+
+
+*************************2) Exploratory Data Analysis and Visualizations  (50 points)********************************
+
+
+Univarite Analysis:
+
+[1] Free Sulhpur and Sulphur dioxide have data points above the max range as outliers
+
+[2] Density, pH, Sulphate Seem to be equally distrbuted at median
+
+[3] PH seems to be equally distibuted at medium
+
+[4] Scaling would yeild better result as range will be normallized for all the attributes 
+```{R}
+boxplot(df[,1:5])
+boxplot(df[,6:11])
+
+
+```
+
+
+Bivariate Plot : 
+
+Wine Quality (Dependent Variable) Bar Plot
+
+[1] As per observation there are 855 records have vaulue "good" and 744 are rated as bad. Target variable seems to have fair distribution    
+```{r}
+
+# Count the occurrences of "bad" and "good" in the quality column
+quality_counts <- table(df$quality)
+
+# Create a bar plot with count values displayed on top
+ggplot(data = NULL, aes(x = names(quality_counts), y = quality_counts)) +
+  geom_bar(stat = "identity", fill = c("pink", "green")) +
+  geom_text(aes(label = quality_counts), vjust = -0.5, color = "black", size = 4) +  # Add count values on top of bars
+  labs(title = "Count of Quality Ratings", x = "Quality", y = "Count") +
+  theme_minimal()
+```
+
+
+
+
+
+Multivariate Analysis:
+
+I have split our data into 25 batches to apply star visualization. As due to lots of records the visualization was not clear and very ambiguous to deduce any hypothesis.
+
+But only showing 3
+
+Let's go through the first three plots.
+
+[1] 'Bad' is skewed more towards left side, whereas 'good' is little contracted from the left side.
+
+[2] 'Bad' is little contracted while 'good' is quite populated in the bottom
+
+[3] 'Bad' seems to be skewed again towards left side whereas 'good' has more regular shape and evenly distributed.
+
+Patterns Revealed: As per obeservation there is a possiblity of left skewedness for 'bad' occurences. While 'good' ones are more evenly distributed and contracted
+
+```{r}
+# Total number of rows in the dataset
+total_rows <- nrow(df)
+
+# Calculate the number of rows in each batch
+batch_size <- ceiling(total_rows / 25)
+
+# Create a sequence of indices to split the dataset into batches
+batch_indices <- seq(1, total_rows, by = batch_size)
+
+# Split the dataset into 25 batches
+batches <- lapply(1:(length(batch_indices) - 1), function(i) {
+  df[batch_indices[i]:batch_indices[i + 1] - 1, ]
+})
+
+# Apply the stars() function to each batch and print as star visualization
+for (i in seq_along(batches[1:3])) {  # Iterate over the first three batches only
+  cat("\n=============================================\n")
+  cat("Batch", i, ":\n\n")
+  print(stars(batches[[i]], labels = batches[[i]]$quality))
+  cat("\n=============================================\n")
+}
+
+```
+
+
+
+
+
+
+Multivariate Analsyis:
+As per the correlation plot observe the attributes having a strong correlation based on color theme.
+
+Observations:
+[1] Fixed acidity has high correlation with: density and citric acid
+Total Sulphur dioxide and free sulphur have fairly good [2] correlation
+[3] PH is negatively correlated to fixed acidity.
+Volatile acid and citric acid have a fair negative correlation 
+
+[4] THere are a few more observations and data seems to have highly related attributes. Which incates we can perform deeper analysis
+```{r}
+
+
+
+correlation_matrix<- cor(df[,0:11])
+ggcorrplot(correlation_matrix,type = "lower", lab = TRUE)
+```
+
+
+
+Data Preprocessing:
+
+[1] one hot encoding: To check correlation of these parameters to     good and bad qualtiy of wine
+```{R}
+
+
+# Define a function to identify categorical columns
+is_categorical <- function(col_type) {
+  identical(col_type, "character")  # Check if the column type is character
+}
+
+# Extract the column names and their data types from the dataframe
+col_names <- names(df)
+col_types <- sapply(df, class)
+
+# Identify categorical columns in the dataframe
+categorical_cols <- col_names[sapply(col_types, is_categorical)]
+
+# Apply one-hot encoding to the categorical columns
+dummy_model <- dummyVars(~., data = df[, categorical_cols])
+df_categorical_encoded <- predict(dummy_model, newdata = df[, categorical_cols])
+
+# Combine the encoded categorical columns into a single dataframe
+df_final <- cbind(df[, !col_names %in% categorical_cols], df_categorical_encoded)
+
+# View the first few rows of the final combined dataframe
+head(df_final)
+
+```
+
+
+
+
+Multivariate plot
+
+
+Now  our data into binary variable for good and bad we can clearly observe that:
+
+[1]Quality of good is positively correlated wit alcohol 
+
+[2] Whereas bad quality is negatively correlated
+
+[3]Same relation with sulphates
+
+[4]density, total sulfur dioxide and chlorides are neagtively correlated with good quality and vice versa
+
+[5] PH and residual sugar have least correlation to quality of wine
+
+we have identified the features that make wine good and bad.
+```{r}
+
+correlation_matrix<- cor(df_final[,1:13])
+ggcorrplot(correlation_matrix,type = "lower", lab = TRUE)
+
+```
+
+
+
+
+3D Visualization: 3 Varaites
+
+
+[1] Observation: The matrix elements on the right side seem to be scattered and left ones seem to be clusetered and densely populated. 
+
+But it is difficult to come to a conculsion due to difficulty in viewing each element
+
+As per my observation based on 3D Scatter plot
+
+[1] Quality of wine drops when acidity increases
+
+[2] Quality of wine remains consistent with respect to alcohol contet with low acidity
+```{r}
+
+
+s3d <- scatterplot3d(df$`fixed acidity`, df$alcohol,df$pH,pch=c(1,16)[as.numeric(df$quality)],xlab="fixed acidity", ylab="alcohol", angle=45,zlab="Quality of Wine", lty.hide=2,type="h",y.margin.add=0.1,font.axis=2,font.lab=2)
+
+```
+
+
+Multivarite Advance analysis:
+
+
+Obervations :
+
+[1] As per this plot we can see that Alcohol plots for good and bad are not overlapping and shows opposite pattern. This indicates that alcohol variable can be used for further models
+
+[2]Similar for volatile acid but not opposite trend, only   slightly deviating, meanignful variable and can be used int   further analysis
+```{r}
+
+ggscatmat(df, columns=1:12, color="quality")
+```
+
+
+BiVariate Plot:
+
+
+Obervation:
+
+[1] Alcohol vs Density plot: Density seems to be negatively   correlated to alcohol content, 
+
+[2] possibility could be density of other contents to wine leading to low quality as high alcohol score has been graded as good quality.
+
+[3] Correlation line: slope seems to be negative, hence negatively correlated.
+```{R}
+# Create a data frame from your existing 'df' object
+df1 <- df_final[!sapply(df_final, is.function)] 
+
+# Attach the 'df' data frame to the search path
+attach(df)
+df
+# Now you can use variables in 'df' directly without referencing the data frame
+plot(df_final$density ~ df_final$alcohol)
+abline(lm(df_final$density ~ df_final$alcohol), col = "red")
+```
+
+
+
+BiVariate analysis:
+
+volatile acidity vs alcohol:
+
+[1]Comparing correlated variable observed earlier but we can see they both follow a similar pattern as per scatter plot. 
+
+```{R}
+
+
+
+# ggplot
+ggplot(df, aes(x = alcohol, y = `volatile acidity`)) + geom_point()
+
+```
+ 
+
+
+
+
+Multivariate Analysis:
+
+Volatile acidity vs pH vs Qualtiy=good only
+
+[1] Good quality wine infers to lighter tone of blue color
+We can see that good quality coffee in the first plot that it drops with increasing volatile acidity but remains unaffectde by pH
+
+Volatile acidity vs pH vs Qualtiy=bad only
+[2] inverse for bad quality wine, bad quality wine is ranging towards high volatile acidity
+```{r}
+ggplot(df_final, aes(x = pH, y = `volatile acidity`)) + geom_point(aes(color = `qualitygood`))
+
+ggplot(df_final, aes(x = pH, y = `volatile acidity`)) + geom_point(aes(color = `qualitybad`))
+```
+
+
+
+
+Univariate:
+
+There are less records for high alcohol content in entire data frame as histogram is skewed (populated) towards left(low value range)
+```{R}
+# histogram
+ggplot(df, aes(alcohol)) + geom_histogram()
+ggplot(df, aes(alcohol)) + geom_histogram(aes(fill = after_stat(count)))
+```
+
+
+
+
+
+
+Bivariate plot:
+
+[1] As per regression we can determine that alcohol is inversely correlated to volatile acidity as the slope is negative.
+
+[2] We can also confirm on our hypothesis that citric acid is inversely correlated to pH content in wine as per the negative slope
+
+[3] As per regression model for stat_smooth we can detemrine that as the volatile acidity increase wine quality rating will drop further 
+
+```{R}
+# regression
+ggplot(df, aes(x = alcohol, y = `volatile acidity`)) + geom_point() + geom_smooth(method = lm)
+ggplot(df, aes(x = pH, y = `citric acid`)) + geom_point() + stat_smooth()
+ggplot(df_final, aes(x = `volatile acidity`, y = `qualitygood`)) + geom_point() + stat_smooth()
+```
+
+2) Exploratory Data Analysis and Visualizations  (50 points)
+
+Part - 2
+
+Statistics test:
+
+```{r}
+
+
+x <- dist(scale(df[, c("fixed acidity", "alcohol", "volatile acidity")],
+                center = FALSE))
+
+as.dist(round(as.matrix(x), 2)[1:15, 1:15])
+
+
+```
+
+
+```{R}
+
+x <- dist(scale(df[, c("fixed acidity", "alcohol", "volatile acidity")],
+                center = FALSE))
+
+Y<- as.dist(round(as.matrix(x), 2)[1:1200, 1:1200])
+
+```
+
+
+```{r}
+
+x <- df[, c("fixed acidity", "alcohol", "volatile acidity")]
+x
+
+```
+
+
+multivariate outlier detection analysis using Mahalanobis distance. Let's break down each part of the code:
+
+Col Means: calculate the mean value of each column
+```{R}
+
+cm <- colMeans(x)
+cm
+```
+
+
+Calaculates the covariance of each column and the covariance matrix provides information about how the variables in the dataframe vary together.
+
+Calculation of Mahalanobis disctance for each distance
+
+MARGIN = 1 specifies that the function should be applied to each row
+
+function(x): takes a row vector x as input and calculates the Mahalanobis distance for that row.
+
+t(x - cm) %*% solve(S) %*% (x - cm): calculates the squared Mahalanobis distance for the row x
+
+x - cm: This subtracts the column means (cm) from the row vector x
+
+solve(S): This computes the inverse of the covariance matrix S
+
+Plotting 3 clusters to identify outlier points for 3 attributes,
+
+1. Center cluster is density based and indicating similarity
+
+2. Outer clusters have varying nature and based on distance from the opposite end, they would display difference in nature.
+
+3. Outermost cluster is not visible w.r.t colours but dark points at outer end are outliers 
+```{r}
+library(reshape2)
+
+S <- cov(x)
+
+print(S)
+
+d <- apply(x, MARGIN = 1, function(x)t(x - cm) %*% solve(S) %*% (x - cm))
+print(d)
+
+
+# Perform k-means clustering
+k <- 3  # Assuming you want to cluster into 3 groups
+cluster <- kmeans(d, centers = k)
+
+# Plot clusters
+plot(x, col = cluster$cluster, main = "Cluster Plot")
+
+# Add cluster centers
+points(cluster$centers, col = 1:k, pch = 8, cex = 2)
+```
+
+
+
+
+
+
+
+QQ plot: 
+
+
+This function generates a QQ plot of the distribution of the variable alcohol against the theoretical normal distribution. In a QQ plot, if the points fall approximately along a straight line, it suggests that the data is approximately normally distributed.
+
+QQline: adds a line through the first and third quartiles of the data.
+
+Inference:
+
+Alcohol attribute seems to be normally distributed at middle of Q-Q Quantile line and deviating at the edges of Sample and Theorotical Quantiles
+
+```{r}
+
+qqnorm(df$alcohol, main = "alcohol")
+qqline(df$alcohol)
+
+```
+
+
+Inference: 
+
+fixed acidity shows high deviation at the edges of Sample and Theorotical Quantiles comparatively indicating a varying nature in the attribute
+```{R}
+
+qqnorm(df$`fixed acidity`, main = "fixed acidity")
+qqline(df$`fixed acidity`)
+
+
+```
+
+
+Inference: 
+
+pH seems to be evenly distibuted indiacinting a bad parameter to use for future analysis. As we cannot differnetiate if wine is good or bad based on pH values
+```{r}
+
+qqnorm(df$pH, main = "pH")
+qqline(df$pH)
+
+
+
+```
+
+
+plot to assess the distribution of distances resulting from a clustering operation
+
+sort(d): Sorts the distances in ascending order.
+
+qchisq((1:nrow(x) - 1/2) / nrow(x), df = 3):
+Generates quantiles from a chi-squared distribution with 3 degrees of freedom.
+
+As the distance of data points increase as per the sorted order, it indicates decreasing normality
+```{r}
+
+plot(qchisq((1:nrow(x) - 1/2) / nrow(x), df = 3), sort(d),
+     xlab = expression(paste(chi[3]^2, " Quantile")),
+     ylab = "Ordered distances")
+abline(a = 0, b = 1)
+```
+
+```{R}
+df$quality <- as.factor(df$quality)
+df_new <- df[, 1:11] #selecting first 11 columns
+df_new
+```
+
+
+Calculation of Mahalanobis disctance for each distance
+MARGIN = 1 specifies that the function should be applied to each row
+
+function(x): takes a row vector x as input and calculates the Mahalanobis distance for that row.
+
+t(x - cm) %*% solve(S) %*% (x - cm): calculates the squared Mahalanobis distance for the row x
+
+x - cm: This subtracts the column means (cm) from the row vector x
+solve(S): This computes the inverse of the covariance matrix S
+```{r}
+df_cm <- colMeans(df_new)
+df_S <- cov(df_new)
+df_d <- apply(df_new, MARGIN = 1, function(df_new)t(df_new - df_cm) %*% solve(df_S) %*% (df_new - df_cm))
+df_cm #means of all the column
+df_S # covarience against each other
+df_d #mahanlobis distance obtained
+```
+
+
+Let's perform DBSCAN to detect outliers in data.
+We can observe data points in green traingle and circle as outliers
+red are normal data points.
+```{r}
+library(fpc)
+
+# Prepare the data (if not already prepared)
+df_cm <- colMeans(df_new)
+df_S <- cov(df_new)
+df_d <- apply(df_new, MARGIN = 1, function(df_new) t(df_new - df_cm) %*% solve(df_S) %*% (df_new - df_cm))
+
+# DBSCAN
+dbscan_result <- dbscan(df_d, eps = 0.5, MinPts = 5)
+
+# Summary of DBSCAN result
+summary(dbscan_result)
+
+# Plot clusters
+plot(dbscan_result, df_d)
+```
+
+
+
+Goal is to find t value and p-value
+
+t-value is 19.292, indicating a large difference between the means of the two groups (Varialbes used: alcohol and compared with quality, target variable which is either good or bad)
+
+p-values is very low indicating strong correlation of quality of wine with respect to alcohol level in wine.
+
+hence we have seem to have map good relation based on t and p values
+
+Confidence interval is 95 indicating difference present between interval 0.83 and 1.022
+```{R}
+with(data=df,t.test(alcohol[quality=="good"],alcohol[quality=="bad"],var.equal=TRUE))
+
+```
+
+
+
+Attributes used for Two sample t-test
+
+t-value is -13.566, indicating a substantial difference between the means of the two groups.
+
+ p-value is extremely low (< 0.00000000000000022), suggesting strong evidence against the null hypothesis. This means there is a significant difference in the mean volatile acidity between the "good" and "bad" quality groups.
+ 
+  95% confidence interval for the difference in means is (-0.13203601, -0.09867697). This interval suggests that the mean volatile acidity for the "good" quality group is expected to be between 0.13203601 and 0.09867697 units lower than the mean volatile acidity 
+  
+Overall, this output indicates a statistically significant difference in the mean volatile acidity between wines of "good" and "bad" quality, with "good" quality wines having, on average, lower volatile acidity compared to "bad" quality wines.
+```{R}
+with(data=df,t.test(`volatile acidity`[quality=="good"],`volatile acidity`[quality=="bad"],var.equal=TRUE))
+
+```
+
+
+t-value is -4.4021, indicating a notable but not very high difference between the means of the two groups.
+Hence not as good as previous two variables
+
+ p-value is 0.00001143, which is less than the significance level (usually 0.05), indicating strong evidence against the null hypothesis. This means there is a significant difference in the mean chlorides content between the "good" and "bad" quality groups.
+ 
+Overall, this output indicates a statistically significant difference in the mean chlorides content between wines of "good" and "bad" quality, with "good" quality wines having, on average, lower chlorides content compared to "bad" quality wines.
+
+```{R}
+with(data=df,t.test(chlorides[quality=="good"],chlorides[quality=="bad"],var.equal=TRUE))
+
+```
+t-value is -0.13044, indicating a very small difference between the means of the two groups. Hence not good to understand the dependent variable using pH as independent variable as it reveals no information.
+ 
+  p-value is 0.8962, which is much greater than the significance level (usually 0.05), indicating weak evidence against the null hypothesis. This means there is no significant difference in the mean pH levels between the "good" and "bad" quality groups.
+  
+Comparing to the previous values, in this case, there is no significant difference in the mean pH levels between wines of "good" and "bad" quality. The t-value is close to zero, the p-value is high, and the confidence interval includes zero, indicating that any observed difference in mean pH levels between the two groups is likely due to random chance.
+
+ 
+```{R}
+
+with(data=df,t.test(pH[quality=="good"],pH[quality=="bad"],var.equal=TRUE))
+```
+ 
+
+The F-statistic of approximately 2.1294, accompanied by a small p-value (< 0.00000000000000022) and a 95% confidence interval for the ratio of variances (1.852111 to 2.446455), suggests strong evidence against the null hypothesis that the variances of alcohol levels between the "good" and "bad" quality groups are equal. Therefore, we infer that there is a statistically significant difference in the variability of alcohol levels between these two quality groups in the dataset.
+```{r}
+
+var.test(df$alcohol[df$quality=="good"],df$alcohol[df$quality=="bad"])
+attach(df)
+```
+Scaling data again to improve score of f and p value
+```{R}
+matstand <- scale(df[,1:11]) # Scaling data again to improve score of f and p value
+matstand
+
+```
+
+The subset of data represented by matsurv contains standardized values of three chemical properties (fixed acidity, volatile acidity, citric acid) for wines categorized as "good" quality. Each row represents a different wine sample.
+```{r}
+matsurv <- matstand[quality == "good",]
+
+
+```
+
+
+The variance of alcohol content significantly differs between wines of "good" quality and those of "bad" quality. 
+
+This is supported by the calculated F-statistic of approximately 2.1294 and the associated p-value, which is virtually zero. 
+
+The confidence interval for the ratio of variances (1.852 to 2.446) further confirms this difference.
+
+```{R}
+var.test(alcohol[quality=="good"],alcohol[quality=="bad"])
+```
+
+```{r}
+matnosurv <- matstand[quality == "bad",]
+vecmediansurv <- apply(matsurv, 2, median)
+
+```
+
+
+
+Fixed Acidity: The median fixed acidity is slightly below the mean value.
+
+
+Volatile Acidity: The median volatile acidity is moderately negative, indicating a lower level compared to the mean.
+
+Citric Acid: The median citric acid content is positive, suggesting a higher concentration compared to the mean.
+
+Residual Sugar: The median residual sugar content is negative, indicating a lower level compared to the mean.
+
+Chlorides: The median chloride content is negative, suggesting a lower concentration compared to the mean.
+
+Free Sulfur Dioxide: The median free sulfur dioxide level is negative, indicating a lower concentration compared to the mean.
+
+Total Sulfur Dioxide: The median total sulfur dioxide level is moderately negative, suggesting a lower concentration compared to the mean.
+
+Density: The median density is negative, indicating a lower value compared to the mean.
+
+pH: The median pH value is close to zero, suggesting it is around the mean level.
+
+Sulphates: The median sulphates content is positive, indicating a higher concentration compared to the mean.
+
+Alcohol: The median alcohol content is positive, suggesting a higher concentration compared to the mean.
+
+```{r}
+vecmediannosurv <- apply(matnosurv, 2, median)
+matabsdevsurv <- abs(matsurv - matrix(rep(vecmediansurv,nrow(matsurv)),nrow=nrow(matsurv), byrow=TRUE))
+
+matabsdevnosurv <- abs(matnosurv - matrix(rep(vecmediannosurv,nrow(matnosurv)),nrow=nrow(matnosurv), byrow=TRUE))
+
+
+
+```
+
+
+```{R}
+
+matabsdev.all <- rbind(matabsdevsurv,matabsdevnosurv)
+matabsdev.all <- data.frame(quality, matabsdev.all)
+
+t.test(matabsdev.all$alcohol[quality == "good"],matabsdev.all$alcohol[quality == "bad"], alternative="less",var.equal = TRUE)
+
+```
+The calculated t-value of approximately -0.35819 suggests that the difference in means of the absolute deviations of alcohol content between wines categorized as "good" quality and "bad" quality is relatively small.
+
+The alternative hypothesis states that the true difference in means is less than 0.
+
+Based on the results of the one-sided t-test, with a significance level of 0.05, there is insufficient evidence to reject the null hypothesis. Therefore, we cannot conclude that the absolute deviations of alcohol content between wines categorized as "good" quality and "bad" quality are significantly different.
+```{r}
+
+t.test(matabsdev.all$fixed.acidity[quality == "good"],matabsdev.all$fixed.acidity[quality == "bad"], alternative="less",var.equal = TRUE)
+```
+
+
+
+```{r}
+
+
+d.all <- data.frame(quality,sqrt(rowSums(matabsdev.all[,-1]^2)))
+d.all
+
+colnames(d.all)[2] <- "dij"
+d.all
+
+
+with(d.all, t.test(dij[quality=="good"], dij[quality=="bad"],var.equal=TRUE, alternative="less"))
+
+
+```
+
+
+
+The calculated t-value is 1.3082 with a corresponding p-value of 0.9045. This p-value indicates that there is insufficient evidence to reject the null hypothesis, suggesting that the mean "dij" value in the "good" quality group is not significantly different from the mean "dij" value in the "bad" quality group.
+
+Therefore, we do not have enough statistical evidence to conclude that there is a significant difference in the "dij" values between the two quality groups.
+
+```{R}
+sprintf("d-values for Survivors: Mean = %2.3f, Variance = %2.3f",mean(d.all$dij[quality=="good"]),var(d.all$dij[quality=="bad"]))
+
+```
+
+
+
+
+******************3) Application of different MVA models  (10 points)*****************************************************
+[1] PCA
+[2] Cluster Analysis
+[3] Factor Analysis
+[4] Multi Regression
+[5] Logisitic Regression
+[6] LDA 
+
+
+
+
+[1] Data Preprocessing for application of models: dimensionality reduction: 
+      [a] PCA Analysis
+      [b] Factor analysis
+
+Models: 
+
+[1] Cluster analysis: (Grouping of target variable)
+[2] Multiple Regression:(Prediction of target variable)
+[3] Logistic Regression: (Prediction of target variable)
+[4] Linear Discriminant Analysis (LDA): (Prediction of target variable)
+
+
+Goal:
+
+[1] Calculate std deviation of Principal components from the mean indicating some behavior of PC's based on attributes calculated
+
+example: High values shows high variability in Principle components
+
+Observations:
+
+Standard Deviation
+[1] PC1, PC2, PC3, PC4, PC5: Have the majority of standard deviation (Total)
+
+[2] PC11, PC10 have the lowest standard deviation indicating less meaning
+
+Rotation (n x k): [Matrix]
+[1] Indicates relation between original attributes and and Principal Components
+
+Observation: (relation crossing 0.30):
+
+[1] PC1: fixed acidity (positive relation),citric acidity (positive relation), pH (negative) indicate highest relativity with PC1 either positive or negative.
+
+[2] PC2: free sulphur dioxide (negative), Total Sulphur dioxide (negative) and alcohol (+ve) relation.
+
+[3] PC3: Volatile acidity (-ve),alcohol has high relation (+ve), free sulphur dioxide (+ve)
+
+Inferences:
+
+alcohol and sulphur dioxide have high values in PC3 indicating +ve correlation between them.
+
++ve and -ve range in each PC are relation of variables with respective PC's and their correlation with each other.
+
+PC1, PC2, PC3, PC4 have majority of proportion of variance indicating to be evaluated further.
+
+But cumulative proportion is low for PC1, PC2, PC3 and increasing further indicating ambiguity as it is the proportion of variance explained. 
+
+```{r}
+# Using prcomp to compute the principal components (eigenvalues and eigenvectors). With scale=TRUE, variable means are set to zero, and variances set to one
+
+#prcomp: return PCA values of dataframe 
+#scale: Scaling variables before performing PCA to obtain uniformity in the values
+df_pca <- prcomp(df[1:11],scale=TRUE)
+summary(df_pca)
+```
+
+
+
+
+
+
+
+Checking eigen vectors:
+
+To check composition of each attribute in respective PC's
+
+Observation:
+
+Eigen values are the center data points in the vector which do not change a lot after rotation.
+
+
+Calculating Eigen vector values/Standard Deviation information contained by each PC's
+Function: df_pca$sdev^2
+
+Squaring to penalize and show the impact of each std deviation
+
+[1] PC1: contains the highest standard deviation: 3.09913244 
+
+[2] PC2, PC3, PC4, PC5:  1.92590969 1.55054349 1.21323253 0.95929207 
+Following principal components contain high amount of standard deviation information.
+
+
+
+Summation of eigen_df calculated with standard deviation and eigen values always amount to the number of Principal components present
+```{R}
+# loading (eigenvectors) are stored in df_pca$rotation
+print(df_pca$rotation)
+# variable standard deviations stored in df_pca$scale
+print(df_pca$scale)
+
+
+
+
+(eigen_df <- df_pca$sdev^2)
+names(eigen_df) <- paste("PC",1:11,sep="") #formatting PC with column no. for respective PC's
+eigen_df
+
+
+sumlambdas <- sum(eigen_df)
+sumlambdas
+```
+
+
+
+
+
+
+
+
+
+Scaling/Proportioning the Principal component eigen values by diving by the sum values of eigen values calculated for each PC's
+
+Even with scaling we can observe that
+
+[1] PC1, PC2, PC3, PC4, PC5 hold the majority percentage of eigen values
+
+starting in order from: 28%, 17%, 14%, 11%, 8%
+
+[2] Rest of the PC's do not hold high proportion of std deviation indicating less meaning.
+```{R}
+propvar <- eigen_df/sumlambdas
+propvar
+```
+
+******************4) Model Insights  PCA (10 points)************
+
+cumsum(propvar): is used to add the values (Indicating increase in cumulative proportion) of previous Principal components to the next Principal component totalling to 1 as the values are scaled from 0 to 1
+
+Barplot to explain cumulative contribution of each PC's
+
+Obervation:
+
+[1] PC1 to PC4 have highest contribution
+[2] After PC5 the contribution is minimal which only amounts to only 0.2 percent of entire values
+
+```{r}
+library(waterfall)
+
+cumvar_df <- cumsum(propvar)
+cumvar_df
+
+# Load the waterfall package
+library(waterfall)
+
+# Create a data frame for the waterfall chart
+waterfall_data <- data.frame(
+  labels = paste("PC", 1:length(propvar)),
+  values = propvar
+)
+
+# Calculate the cumulative sum of the proportion of variance
+cumulative_propvar <- cumsum(waterfall_data$values)
+
+# Plot the waterfall chart with rotated x-axis labels
+barplot(cumulative_propvar, names.arg = waterfall_data$labels, 
+        main = "Waterfall Chart of Cumulative Proportion of Variance",
+        xlab = "Principal Component", ylab = "Cumulative Proportion of Variance",
+        las = 2, cex.names = 0.8)  # las = 2 for vertical labels, cex.names to adjust label size
+
+
+#Based on the cumulative plot we can select PC1 to PC5 as they indicate high contribution to the total
+```
+
+******************4) Model Insights  PCA (10 points)************
+eigen_df: This seems to be a data frame containing information about eigenvectors or eigenvalues from some analysis.
+
+propvar: This is likely a vector containing the proportion of variance explained by each principal component.
+
+cumvar_df: This could be another data frame containing cumulative proportion of variance explained by each principal component.
+
+rbind(eigen_df,propvar,cumvar_df): to combine above mentioned dataframes
+
+Observation:
+
+matlambdas: (Combined dataframe)
+[1] PC1 and PC2 have highest proportion of eigen values indicating highest variance captured
+
+[2] Hence proportion of variance is highest for PC1 and PC2
+
+
+Second Observation is for original PCA vector: (same as above just not combined hence showing lesser values)
+
+[1] PC1 and PC2 have highest proportion of eigen values indicating highest variance captured
+
+[2] Hence proportion of variance is highest for PC1 and PC2
+
+
+Mapping Dependent variable with PC1 and PC2:
+
+Observations:
+
+[1] Quality=Bad are both negative and positive components of PC1 and PC2 but more towards negative
+
+[2] Quality = Good are capturing both negative and positive value in most of the Principal Components but more towards positive
+```{R}
+
+#Combining mulltiple dataframes of PCA calculation done
+matlambdas <- rbind(eigen_df,propvar,cumvar_df)
+
+#Assigning row names to combined data frame
+rownames(matlambdas) <- c("Eigenvalues","Prop. variance","Cum. prop. variance")
+
+#rounding values of combined dataframe to 4 decimal points
+round(matlambdas,4)
+
+summary(matlambdas)
+summary(df_pca)
+
+# Identifying the scores by their Quality of wine 
+dftyp_pca <- cbind(data.frame(quality),df_pca$x)
+dftyp_pca
+```
+
+
+
+
+
+
+******************4) Model Insights  PCA (10 points)************
+
+
+Now after aggregating:
+
+Obervations:
+
+[1] Quality = Bad is towards -ve in PC1, PC2, PC3. Having highest varaibility in PC3 and PC2
+
+PC3: had correlation with variations Alcohol
+
+refer to correlations mapped earlier to decode PCA and analyse to get meaning from variables.
+
+[2] PC2: free sulphur dioxide (negative), Total Sulphur dioxide (negative) and alcohol (+ve) relation.
+
+[3] PC3: Volatile acidity (-ve),alcohol has high relation (+ve), free sulphur dioxide (+ve)
+```{R}
+# Means of scores for all the PC's classified by Quality status
+tabmeansPC <- aggregate(dftyp_pca[,2:6],by=list(quality=df$quality),mean)
+tabmeansPC
+```
+
+
+sorted indices to rearrange the rows of the data frame tabmeansPC, resulting in a new data frame where the rows are sorted based on the values in the "quality" column in descending order.
+
+2- indicates quality = good
+1- indicates quality = bad
+
+[1] Good quality wine is displaying +ve correlation
+
+[2] Good quality wine is displaying -ve correlation
+
+[3] also PC2 and PC3 have highest varibility with PC2 and PC3 indicating high variability for good and bad wine indicating a good criteria to differentiate and understand relation of variables with dependent variable
+
+Mapped values:
+
+[1] Good quality wine is displaying +ve correlation
+
+[2] Good quality wine is displaying -ve correlation
+
+[3] also PC2 and PC3 have highest varibility with PC2 and PC3 indicating high variability for good and bad wine indicating a good criteria to differentiate and understand relation of variables with dependent variable
+```{r}
+
+```
+
+
+
+dftyp_pca[,2:11]: This part selects columns 2 to 11 (inclusive) from the data frame 
+
+dftyp_pca. It subsets the data frame to include only these specific columns.
+
+by: This argument specifies the grouping variable or variables. In this case, it's specified as list(quality = df$quality), which means that the data will be grouped by the values of the "quality" column from the data frame df.
+
+sd (Standard deviation): This is the function that will be applied to each subset of the data. In this case, it's sd, which calculates the standard deviation.
+
+after calculating standard deviation, transposition is done
+
+viewing std deviation of Dependent variable with respect to PC's.
+
+Observation:
+
+
+Chosen PC's:
+[1] PC1 to PC5 have values above 1 indicating high std deviation with respect to dependent variable
+```{r}
+tabmeansPC <- tabmeansPC[rev(order(tabmeansPC$quality)),]
+print(tabmeansPC)
+
+tabfmeans <- t(tabmeansPC[,-1])
+print(tabfmeans)
+
+colnames(tabfmeans) <- t(as.vector(tabmeansPC[1]$quality))
+print(tabfmeans)
+
+# Standard deviations of scores for all the PC's classified by Quality status
+tabsdsPC <- aggregate(dftyp_pca[,2:11],by=list(quality=df$quality),sd)
+
+#Transpose the resulting subset by transposition on rows and columns of PC's and Quality
+tabfsds <- t(tabsdsPC[,-1])
+
+colnames(tabfsds) <- t(as.vector(tabsdsPC[1]$quality))
+tabfsds
+```
+
+t-test of PC1 to PC5 with dependent varaible to obtain mean based on t-value and p-value
+
+T-test: t-test of PC1 to PC5 with dependent varaible to obtain mean based on t-value and p-value:
+
+
+Observations and Inferences:
+[1] PC1: The ratio of variances between the "bad" and "good" quality groups is not significantly different from 1 
+
+Inference (PC1):
+The variability in PC1 scores differs significantly between the "bad" and "good" quality groups, indicating that PC1 may capture important differences related to wine quality.
+
+[2] PC2: The ratio of variances between the two quality groups is not significantly different from 1 (p-value = 0.06941). 
+
+
+
+
+
+[3] PC3: The ratio of variances between the two quality groups is significantly different from 1 (p-value = 0.0001727). 
+
+
+Inference (PC3):
+PC3 also exhibits significant differences in variability between the two quality groups, suggesting that PC3 may be informative for distinguishing between "bad" and "good" quality wines.
+
+
+
+[4] PC4: The ratio of variances between the two quality groups is significantly different from 1 (p-value < 0.00000000000000022).
+
+
+
+Inference (PC4):
+
+PC4 shows substantial variability differences, further indicating its potential relevance for discriminating between wine qualities.
+
+
+
+[5] PC5: The ratio of variances between the two quality groups is not significantly different from 1 (p-value = 0.1089). 
+
+
+Conclusion:
+In summary, PC1, PC3, and PC4 exhibit significant differences in variances between the "bad" and "good" quality groups, indicating potential heterogeneity in variances between the two groups for these components. PC2 and PC5 do not show significant differences in variances.
+```{R}
+t.test(PC1~df$quality,data=dftyp_pca)
+t.test(PC2~df$quality,data=dftyp_pca)
+t.test(PC3~df$quality,data=dftyp_pca)
+t.test(PC4~df$quality,data=dftyp_pca)
+t.test(PC5~df$quality,data=dftyp_pca)
+```
+******************4) Model Insights  PCA (10 points)************
+
+Performing F-test to calculate Variance for Principle components w.r.t Dependent variable:
+
+
+Observations:
+
+PC1: The F-test result shows a p-value of 0.01129, indicating a significant difference in variances between the "bad" and "good" quality groups for PC1.
+
+The ratio of variances is estimated to be approximately 0.8349, suggesting that the variance of PC1 scores is lower in the "good" quality group compared to the "bad" quality group.
+
+
+PC2: With a p-value of 0.06941, the F-test result for PC2 does not show a significant difference in variances between the quality groups. The estimated ratio of variances is approximately 1.1372, indicating a slight increase in variance in the "good" quality group, although not statistically significant at conventional levels.
+
+PC3: The F-test result yields a highly significant p-value of 0.0001727, indicating a substantial difference in variances between the quality groups for PC3. The estimated ratio of variances is approximately 0.765, suggesting a lower variance in the "good" quality group compared to the "bad" quality group.
+
+PC4: Similar to PC3, the F-test result for PC4 indicates a highly significant difference in variances between the quality groups (p-value < 0.00000000000000022). The estimated ratio of variances is approximately 1.8615, suggesting a higher variance in the "good" quality group compared to the "bad" quality group.
+
+PC5: The F-test result for PC5 yields a p-value of 0.1089, indicating no significant difference in variances between the quality groups. The estimated ratio of variances is approximately 1.1202, suggesting a slightly higher variance in the "good" quality group, although not statistically significant.
+
+
+Conclusion:
+
+In summary, PC1, PC3, and PC4 exhibit significant differences in variances between the "bad" and "good" quality groups, while PC2 and PC5 do not show significant differences. These results provide insights into the variability of principal component scores across different wine quality groups.
+
+```{R}
+options(scipen=999)
+## F ratio tests
+var.test(PC1~df$quality,data=dftyp_pca)
+var.test(PC2~df$quality,data=dftyp_pca)
+var.test(PC3~df$quality,data=dftyp_pca)
+var.test(PC4~df$quality,data=dftyp_pca)
+var.test(PC5~df$quality,data=dftyp_pca)
+```
+
+4) Model Insights  (10 points): PCA
+
+Goal:
+Levene's tests (one-sided):
+The one-sided p-value indicates the probability of observing a result as extreme as the one observed, assuming that the variances of the two groups are different in the direction of interest.
+
+In summary, this code segment is useful for assessing whether there are significant differences in variances between the "bad" and "good" quality groups for each principal component, providing insights into the homogeneity of variances across different quality groups.
+
+
+Observations and Inferences: Chosen PC's: PC1, PC2, PC3, PC4, PC5
+
+PC1:
+
+The F value is 9.7234 with a corresponding p-value of 0.001852.
+The p-value is significant at the 0.01 level.
+Inference: There is evidence to suggest that the variances of PC1 scores between the two groups ("bad" and "good" quality) are significantly different.
+
+
+PC2:
+
+The F value is 3.0446 with a corresponding p-value of 0.0812.
+The p-value is not significant at the 0.05 level.
+Inference: There is no strong evidence to suggest that the variances of PC2 scores between the two groups are significantly different.
+
+
+PC3:
+
+The F value is 8.864 with a corresponding p-value of 0.002952.
+The p-value is significant at the 0.01 level.
+Inference: There is evidence to suggest that the variances of PC3 scores between the two groups are significantly different.
+
+
+
+PC4:
+
+The F value is 4.6593 with a corresponding p-value of 0.03103.
+The p-value is significant at the 0.05 level.
+Inference: There is evidence to suggest that the variances of PC4 scores between the two groups are significantly different.
+
+
+
+PC5:
+
+The F value is 2.518 with a corresponding p-value of 0.1128.
+The p-value is not significant at the 0.05 level.
+Inference: There is no strong evidence to suggest that the variances of PC5 scores between the two groups are significantly different.
+
+```{R}
+# Levene's tests (one-sided)
+library(car)
+
+#leveneTest function takes the formula PC(1 to 5)~df$quality where PC1 represents the scores of PC1 to 5 and df$quality represents the quality groups. 
+
+#eg: (p_PC1_1sided <- LTPC1[[3]][1]/2 : extracts the p-value from the result of the Levene's test for PC1 and divides it by 2 to get a one-sided p-value. 
+
+(LTPC1 <- leveneTest(PC1~df$quality,data=dftyp_pca))
+(p_PC1_1sided <- LTPC1[[3]][1]/2)
+(LTPC2 <- leveneTest(PC2~df$quality,data=dftyp_pca))
+(p_PC2_1sided=LTPC2[[3]][1]/2)
+(LTPC3 <- leveneTest(PC3~df$quality,data=dftyp_pca))
+(p_PC3_1sided <- LTPC3[[3]][1]/2)
+(LTPC4 <- leveneTest(PC4~df$quality,data=dftyp_pca))
+(p_PC4_1sided <- LTPC4[[3]][1]/2)
+(LTPC5 <- leveneTest(PC5~df$quality,data=dftyp_pca))
+(p_PC5_1sided <- LTPC5[[3]][1]/2)
+```
+
+******************4) Model Insights  PCA (10 points)************
+
+
+Observations: 
+
+
+Quality= good
+
+PC2 and PC3: seems to be correlated to Good quality wine, as green data points are densely populated towards positive value of PC2 and PC3  x-axis, y-axis
+
+Quality = bad
+
+seems to be uniformly distributed but skewed little towards negative scale of x-axis(PC2).
+
+
+
+****Visualization ****
+```{R}
+# Plotting the scores for the first and second components
+plot(dftyp_pca$PC2, dftyp_pca$PC3, 
+     pch = ifelse(dftyp_pca$quality == "good", 21, 2),  # Circles with a border for "Good", triangles for "Bad"
+     bg = ifelse(dftyp_pca$quality == "good", "#006400", "red"),  # Darker green for "Good" points
+     col = ifelse(dftyp_pca$quality == "good", "green", "red"),  # Color assignment for the border
+     cex = 1,  # Normal size for both "Good" and "Bad"
+     xlab = "PC2", ylab = "PC3", main = "Wine Quality against PC1 & PC2")
+abline(h = 0)
+abline(v = 0)
+legend("bottomleft", legend = c("Good", "Bad"), pch = c(21, 2), col = c("green", "red"), pt.bg = c("#006400", NA))
+
+
+```
+
+
+******************4) Model Insights  PCA (10 points)************
+
+
+Observations: log(eigen value)
+
+[1] Seems like log(Component varaince) drops below 0 after PC5
+[2] At PC10 log seems to drop at -2
+
+```{R}
+plot(log(eigen_df), xlab = "Component number",ylab = "log(Component variance)", type="l",main = "Log(eigenvalue) diagram")
+print(summary(df_pca))
+```
+
+
+
+
+Observations:
+
+[1] PC1 to PC4 seem to have variance above one indicating meaning and should be visualized and decoded further
+```{r}
+
+plot(df_pca, xlab = "Principal Component")
+
+```
+```{R}
+#get the original value of the data based on PCA
+center <- df_pca$center #loading center values of PCA during transformation
+
+scale <- df_pca$scale  # retrieves the scaling values used during the PCA transformation.
+
+
+new_df <- as.matrix(df[1:11])
+
+
+
+```
+
+
+scale(new_df,center=center, scale=scale):
+
+scales the original data new_df using the centering and scaling values obtained during PCA.
+ 
+ 
+%*%df_pca$rotation[,1]:  
+
+performs matrix multiplication of the scaled data with the first principal component obtained from PCA, which essentially projects the data onto the first principal component.
+
+
+From this we can further extract information and contribution of each attribute in respective principal components.
+```{R}
+drop(scale(new_df,center=center, scale=scale)%*%df_pca$rotation[,1])
+predict(df_pca)[,1]
+
+
+```
+
+Univariate plot to understand :
+
+[1] Based on barplot PC1 is good indicator for bad quality wine as most of the data points for bad quality wine are above max line as outliers
+
+
+[2] Based on barplot PC2 is good indicator for good quality wine as most of the data points for good quality wine are below minimum line as outliers
+
+
+[3]  Based on barplot PC3 is good indicator for good quality wine as most of the data points for good quality wine are above max line as outliers 
+```{R}
+#The aboved two gives us the same thing. predict is a good function to know.
+df$quality <- as.factor(df$quality)
+out <- sapply(1:5, function(i){plot(df$quality,df_pca$x[,i],xlab=paste("PC",i,sep=""),ylab="quality")})
+pairs(df_pca$x[,1:5], ylim = c(-6,4),xlim = c(-6,4),panel=function(x,y,...){text(x,y,df$quality)})
+```
+
+
+
+****Explain the variate representation each PCs****
+Multivariate plot:
+
+This used to see contribution of each variable in PC1 to understand variability in data
+
+PC1:
+[1] fixed acidity, citric acidity and pH are highest contributors towards PC1
+
+
+PC2:
+[2] Free sulfur dioxide and total sulfur dioxide are the biggest contributors.
+
+
+Hence we can deduce that wine quality is good when PC2 is low which means Free sulfur dioxide content and total sulfur dioxide content also should be low
+
+
+PC3:
+[3] Alcohol and volatile acidity are the biggest contributors to PC3
+
+
+Hence we can deduce that wine quality is good when PC3 is high which means Alcohol content and volatile acid content also should be high
+```{r}
+library(ggplot2)
+
+# Extract the loadings from the rotation matrix
+loadings <- abs(df_pca$rotation[, 1])  # Assuming you want to visualize the loadings for the first principal component
+
+# Create a data frame for plotting
+loadings_df <- data.frame(Attribute = colnames(new_df), Loading = loadings)
+
+# Plot the contributions of each attribute to the first principal component
+ggplot(loadings_df, aes(x = Attribute, y = Loading)) +
+  geom_bar(stat = "identity") +
+  labs(x = "Attribute",
+       y = "Loading (Absolute Value)",
+       title = "Contribution of Attributes to First Principal Component") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for better readability
+
+
+
+
+# Extract the loadings from the rotation matrix for PC2
+loadings_pc2 <- abs(df_pca$rotation[, 2])
+loadings_df_pc2 <- data.frame(Attribute = colnames(new_df), Loading = loadings_pc2)
+
+# Extract the loadings from the rotation matrix for PC3
+loadings_pc3 <- abs(df_pca$rotation[, 3])
+loadings_df_pc3 <- data.frame(Attribute = colnames(new_df), Loading = loadings_pc3)
+
+# Plot the contributions of each attribute to PC2
+ggplot(loadings_df_pc2, aes(x = Attribute, y = Loading)) +
+  geom_bar(stat = "identity") +
+  labs(x = "Attribute",
+       y = "Loading (Absolute Value)",
+       title = "Contribution of Attributes to Second Principal Component") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for better readability
+
+# Plot the contributions of each attribute to PC3
+ggplot(loadings_df_pc3, aes(x = Attribute, y = Loading)) +
+  geom_bar(stat = "identity") +
+  labs(x = "Attribute",
+       y = "Loading (Absolute Value)",
+       title = "Contribution of Attributes to Third Principal Component") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for better readability
+
+```
+```{R}
+# Better Ways to Visualize
+
+library(factoextra)
+library(FactoMineR)
+library(ggfortify)
+library(psych)
+library(corrplot)
+library(devtools)
+```
+
+
+
+Based on correlation plot below we can see that alcohol, citric acid, volatile acid and sulfur dioxide are skewed towards left side which is correlated towards either good or bad value of dependent variable as per extreme skewedness.
+```{R}
+# Correlation
+pairs.panels(df[,-1],
+             gap = 0,
+             bg = c("red", "blue")[df$quality],
+             pch=21)
+```
+
+
+
+PC2, PC3, PC4 and PC5 seem to be highly informative as they are either skewed towards left or right unlike PC1 which uniform and would not help us to predict dependent variable
+
+```{R}
+pairs.panels(df_pca$x,
+             gap=0,
+             bg = c("red", "blue")[df$quality],
+             pch=21)
+
+```
+
+
+
+As per the below plot we can infer that PC1-PC5 is enough for analyzing data as they contain 85% of varainces which can be used for prediction and analysis
+
+```{R}
+
+
+fviz_eig(df_pca, addlabels = TRUE)
+```
+
+
+
+As we have analyzed that PC2 and PC3 are good indicators of wine quality.
+
+
+We can observe that alcohol and acid based variables are in positive curve of PC2 and PC3 indicating that good quality wine is majorly dependent on these attributes to be good.
+```{R}
+library(factoextra)
+
+# Plot variables' contributions to both PC2 and PC3
+plot_pc2_pc3 <- fviz_pca_var(df_pca, axes = c(2, 3), col.var = "cos2",
+                              gradient.cols = c("#FFCC00", "#CC9933", "#660033", "#330033"),
+                              repel = TRUE) +
+  ggtitle("PC2 and PC3 - Variance Contributions")
+
+# Display the plot
+plot_pc2_pc3
+
+```
+            repel = TRUE)
+
+
+
+
+```{r}
+# Different PCA Method. 
+res.pca <- PCA(df[, 1:11], graph = FALSE)
+print(res.pca)
+```
+
+
+Dim.1:
+
+Free Sulfur Dioxide (26.375087)
+Fixed Acidity (23.9428401)
+Citric Acid (21.4954313)
+Dim.2:
+
+Residual Sugar (7.402766)
+Volatile Acidity (7.558677)
+Free Sulfur Dioxide (1.221086)
+Dim.3:
+
+Fixed Acidity (1.5203278)
+Volatile Acidity (20.2466277)
+Free Sulfur Dioxide (18.3863327)
+Dim.4:
+
+Chlorides (44.3815454)
+Residual Sugar (13.8974295)
+Volatile Acidity (0.6234647)
+Dim.5:
+
+Residual Sugar (53.6035258)
+Free Sulfur Dioxide (2.5329353)
+Volatile Acidity (4.7844791)
+Top 3 Attributes with Highest Negative Loadings:
+
+Dim.1:
+
+Volatile Acidity (-0.42001233)
+Chlorides (-0.37364637)
+Free Sulfur Dioxide (-0.06365298)
+Dim.2:
+
+Fixed Acidity (-0.1533525)
+Citric Acid (-0.2106517)
+Chlorides (-0.2054617)
+Dim.3:
+
+Volatile Acidity (-0.5602970)
+Fixed Acidity (-0.1535361)
+Citric Acid (0.2966672)
+Dim.4:
+
+Fixed Acidity (-0.25291627)
+Citric Acid (-0.08747670)
+Volatile Acidity (0.08697170)
+Dim.5:
+
+Fixed Acidity (-0.08091468)
+Citric Acid (-0.05736810)
+Volatile Acidity (0.21423615)
+
+
+
+
+
+
+
+PC1: has high cosine similarity with fixed acidity, citric acid, density and pH but still it is evenly distributed hence not meaningful
+
+
+PC2: has high cosine similarity with total and free sulfuric acid but as per previous analysis high PC2 means bad quality wine hence these attributes contribute towards bad quality wine
+
+PC3: has high cosine similarity to alcohol and volatile acidity, this combination is correlated to good quality wine
+```{R}
+
+library(corrplot)
+
+# Compute the cos2 values from the PCA results
+cos2_matrix <- res.pca$var$cos2
+
+# Plot the correlation matrix using corrplot
+corrplot(cos2_matrix, is.corr = FALSE)
+
+
+```
+
+
+Below plot confirms on our hypothesis that alcohol and sulfur components contribute towards PC3 and PC2
+```{R}
+# Total cos2 of variables on Dim.3 and Dim.2
+#A high cos2 indicates a good representation of the variable on the principal component. 
+#In this case the variable is positioned close to the circumference of the correlation circle.
+#A low cos2 indicates that the variable is not perfectly represented by the PCs. 
+#In this case the variable is close to the center of the circle.
+
+fviz_cos2(res.pca, choice = "var", axes = 2:3)
+
+```
+
+Below plot also confirms
+
+as alcohol is positive with PC3 but negative with PC2 indicating good quality wine has high alcohol content 
+
+```{R}
+fviz_pca_var(res.pca, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             repel = TRUE,
+             axes = c(3, 2) # Specify PC3 and PC4
+             )
+```
+
+
+Hypothesis: High alcohol content, density and volatile acidity are contributors towards good quality wine as per observation as these categories are above mean line
+```{R}
+# Contributions of variables to PC1
+fviz_contrib(res.pca, choice = "var", axes = 3, top = 10)
+```
+
+
+As per descriptive analysis I can infer these values
+
+For PC1:
+
+Fixed acidity (correlation: 0.86140602)
+pH (correlation: -0.77198543)
+Density (correlation: 0.69599339)
+For PC2:
+
+Total sulfur dioxide (correlation: 0.79031776)
+Free sulfur dioxide (correlation: 0.71271338)
+Volatile acidity (correlation: -0.42001233)
+For PC3:
+
+Residual sugar (correlation: 0.71708742)
+Alcohol (correlation: -0.53593092)
+Chlorides (correlation: 0.37364637)
+```{R}
+# Description of PC
+
+res.desc <- dimdesc(res.pca, axes = c(1,2,3,4,5), proba = 0.05)
+# Description of dimension 1
+res.desc$Dim.1
+res.desc$Dim.2
+res.desc$Dim.3
+res.desc$Dim.4
+res.desc$Dim.5
+```
+```{R}
+# Graph of Indiviuals
+ind <- get_pca_ind(res.pca)
+ind
+```
+```{r}
+## Principal Component Analysis Results for individuals
+##  ===================================================
+##   Name       Description                       
+## 1 "$coord"   "Coordinates for the individuals" 
+## 2 "$cos2"    "Cos2 for the individuals"        
+## 3 "$contrib" "contributions of the individuals"
+#To get access to the different components, use this:
+
+# Coordinates of individuals
+head(ind$coord)
+```
+
+4) Model Insights  (10 points): PCA
+
+As per below plot (area curve)
+
+High value of of PC3 indicates good score of wine and drops quickly below elbow point at 0.25
+
+```{R}
+fviz_cos2(res.pca, choice = "ind", axes = 3)
+
+```
+
+
+4) Model Insights  (10 points): PCA
+
+Finally we can confirm on our thesis that PC3 is strong indicator of good quality wine as the circle highlighting good quality wine is more towards positive of PC3 
+```{r}
+fviz_pca_ind(res.pca,
+             geom.ind = "point", # show points only (not "text")
+             col.ind = df$quality, # color by groups
+             palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+             addEllipses = TRUE, # Concentration ellipses
+             axes = c(2, 3), # PC2 and PC3
+             legend.title = "Groups"
+             )
+
+```
+
+
+
+
+In the below plot we can infer that bad quality wine is towrds negative coordinates of PC2 w.r.t to PC1 showing negative correlation with quality of wines
+```{R}
+
+fviz_pca_ind(res.pca, geom.ind = "point", col.ind = df$quality, 
+             palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+             addEllipses = TRUE, ellipse.type = "confidence",
+             legend.title = "Groups"
+             )
+```
+
+
+PC4 and PC5 are not good indicators of quality of wine as the data points are evenly distribute towards center and also has random outliers.
+```{R}
+fviz_pca_ind(res.pca,
+             label = "none", # hide individual labels
+             habillage = df$quality, # color by groups
+             addEllipses = TRUE, # Concentration ellipses
+             axes = c(4, 5), # PC4 and PC5
+             palette = "jco"
+             )
+```
+
+
+4) Model Insights  (10 points): PCA
+
+Alcohol is shows contribution towards good quality wine, along with citric acid which shows little contribution.
+
+Hence we can say that these 2 parameters indicate good rating for wine
+
+
+Whereas density and volatile acidity show negative correlation and indicate bad quality wine
+```{R}
+fviz_pca_biplot(res.pca, 
+                # Individuals
+                geom.ind = "point",
+                fill.ind = df$quality, col.ind = "black",
+                pointshape = 21, pointsize = 2,
+                palette = "jco",
+                addEllipses = TRUE,
+                # Variables
+                alpha.var = "contrib", col.var = "contrib",
+                gradient.cols = "RdYlBu",
+                axes = c(2, 3),  # PC2 and PC3
+                legend.title = list(fill = "Quality", color = "Contrib")
+                )
+
+```
+
+```{R}
+
+# Load required libraries
+library(cluster)     # For cluster analysis
+library(readr)       # For reading data files
+library(factoextra)  # For visualizing multivariate analysis results
+library(magrittr)    # For using the pipe operator %>%
+library(NbClust)     # For determining the optimal number of clusters
+
+```
+
+```{r}
+#for loading csv data
+library(readr)
+
+# Read the CSV file
+df <- read_csv("C:/Rutgers/Subjects/Spring Sem/Multivariate Analysis/Data/wine_new.csv")
+
+#dataframe
+df
+
+```
+
+
+
+
+selected these columns because of positive and negative correlation, other columns were not beneficial for analysis
+```{R}
+# Assuming df is your dataframe
+attach(df)
+
+#selected these columns because of positive and negative correlation, other columns were not beneficial for analysis
+selected_cols <- df[, c("volatile acidity", "citric acid", "chlorides", "sulphates", "alcohol","quality")]
+
+selected_cols
+```
+
+```{R}
+quality_counts1 <- table(df$quality)
+
+# Create a bar plot with count values displayed on top
+ggplot(data = NULL, aes(x = names(quality_counts1), y = quality_counts1)) +
+  geom_bar(stat = "identity", fill = c("pink", "green","yellow","blue","red","purple")) +
+  geom_text(aes(label = quality_counts1), vjust = -0.5, color = "black", size = 4) +  # Add count values on top of bars
+  labs(title = "Count of Quality Ratings", x = "Quality", y = "Count") +
+  theme_minimal()
+
+
+```
+
+
+column 6 which is quality (Categorical: Target variable)
+Range parameters: Bad, Poor, Average, Good, Very Good, Excellent
+
+Why I chose these attributes for cluster?
+
+Answer:
+
+volatile acidity: neagtively correlated to target variable
+
+Citric acid: Positively correlated
+
+similar correlation for columns selected showing no randomness
+
+
+Group by quality and calculate the average of all other attributes within each group 
+
+Also assigning groups(random) Assigning groups to target variable:
+
+Ideal range of quality is mention below (ascending)
+
+group number is random
+
+ Bad: 2
+ Poor: 5 
+ Average: 1
+ Good: 4 
+ Very Good: 6
+ Excellent: 3
+
+
+
+```{r}
+selected_cols$quality <- factor(selected_cols$quality)
+str(quality)
+names(selected_cols)
+```
+
+```{R}
+
+
+# Convert 'quality' to factor if it's not already
+selected_cols$quality <- as.factor(selected_cols$quality)
+
+# Perform aggregation
+grouped_avg <- aggregate(. ~ quality, data = selected_cols[, -2], FUN = mean)
+
+# Print the grouped averages
+print(grouped_avg)
+
+
+```
+
+
+setting target variable as row name by removing it first
+
+grouping values based on alcohol and assigning a value to target variable based on that
+
+Observation:
+
+as alcohol content increase quality of alcohol also improves as highest scores are assigned to excellent quality of wine based on group number
+
+Lowest values of alcohol are assigned to bad quality wine 
+
+values of alcohol content is increasing with range bad to excellent
+```{R}
+# Set the first column as row names
+row.names(grouped_avg) <- grouped_avg[, 1]  # Assuming the first column contains row names
+
+# Remove the first column from the dataframe
+grouped_avg <- grouped_avg[, -1]
+
+# View the dataframe
+grouped_avg
+```
+
+
+
+Observation:
+
+as alcohol content increase quality of alcohol also improves as highest scores are assigned to excellent quality of wine based on group number
+
+Lowest values of alcohol are assigned to bad quality wine 
+
+values of alcohol content is increasing with range bad to excellent
+
+
+based on this we can observe correlation of attribute with respect to target variable as i mentioned above
+
+
+Scaled values give a picture of positive and negative correlation in range 1 to -1
+
+positive value of attributes means correlated
+
+Negative value of attributes means negatively correlated
+```{R}
+matstd.can <- scale(grouped_avg)
+matstd.can
+```
+
+
+Calculating Euclidean distance of target variable values:
+
+
+Excellent has highest distance to Bad which is worst quality of wine
+
+The distance is less for similar quality example:
+
+[1] Excellent and very good
+
+[2] Poor and Bad
+```{R}
+# Creating a (Euclidean) distance matrix of the standardized data 
+dist.wine <- dist(matstd.can, method="euclidean")
+dist.wine
+```
+
+Invoking Hierarchial cluster with method single
+```{r}
+# Invoking hclust command (cluster analysis by single linkage method)      
+cluswine.nn <- hclust(dist.wine, method = "single") 
+```
+
+
+4) Model Insights  (10 points): Cluster Analysis
+
+
+Observation:
+Excellent and very good quality of wine have a single parent
+
+Poor and Good are in same branch. (Average quality wine is also in same branch)
+
+Bad quality wine which has score extremely low is standalone branch in heirarchial cluster
+
+Number of Hierarchies: 3
+
+we can form 2 groups:
+
+[1] Excellent and very good quality
+
+[2] Bad, Average, Poor and Good
+```{r}
+# Plotting vertical dendrogram      
+# create extra margin room in the dendrogram, on the bottom (Canine species' labels)
+#par(mar=c(6, 4, 4, 2) + 0.1)
+plot(as.dendrogram(cluswine.nn),ylab="Distance between wine quality",ylim=c(0,2.5),main="Dendrogram of 12 qualities of wine")
+```
+
+
+4) Model Insights  (10 points): Cluster Analysis
+
+
+
+Applying scaling again for new operation
+
+Volatile Acidity: The "Bad" quality category tends to have significantly higher volatile acidity compared to other categories, while "Very Good" and "Excellent" categories have lower than average volatile acidity.
+
+
+Citric Acid: The "Bad" and "Poor" quality categories exhibit lower citric acid levels compared to the other categories, with "Excellent" having the highest average citric acid content.
+
+
+Chlorides: The "Bad" quality category shows the highest chloride content, followed by "Average" and "Very Good" categories. "Excellent" quality wines tend to have the lowest chloride content.
+
+
+Sulphates: "Excellent" quality wines tend to have the highest sulphate content, while "Poor" quality wines have the lowest.
+
+
+Alcohol: "Excellent" quality wines have the highest alcohol content, while "Bad" quality wines have the lowest.
+
+
+Overall, these observations suggest that certain chemical properties like volatile acidity, citric acid, chlorides, sulphates, and alcohol content vary significantly across different quality categories of wines.
+
+```{R}
+
+
+matstd.can
+matstd.wine_new <- scale(matstd.can[,1:4])
+matstd.wine_new
+```
+
+
+Observation:
+Excellent and very good quality of wine have a single parent
+
+Poor and Good are in same branch. (Average quality wine is also in same branch)
+
+Bad quality wine which has score extremely low is standalone branch in heirarchial cluster
+
+Number of Hierarchies: 3
+
+we can form 2 groups:
+
+[1] Excellent and very good quality
+
+[2] Bad, Average, Poor and Good
+
+
+```{R}
+# Creating a (Euclidean) distance matrix of the standardized data
+dist.employ <- dist(matstd.wine_new, method="euclidean")
+# Invoking hclust command (cluster analysis by single linkage method)
+clusemploy.nn <- hclust(dist.employ, method = "single")
+
+plot(as.dendrogram(clusemploy.nn),ylab="Distance between Quality wine",ylim=c(0,6),
+     main="Dendrogram. Quality of wine and hierarchy")
+```
+
+
+```{r}
+plot(as.dendrogram(clusemploy.nn), xlab= "Distance between quality wine", xlim=c(6,0),
+     horiz = TRUE,main="Dendrogram. Quality of wine and hierarchy vertical")
+```
+```{R}
+# We will use agnes function as it allows us to select option for data standardization, the distance measure and clustering algorithm in one single function
+
+agn.employ <- agnes(matstd.can, metric="euclidean", stand=TRUE, method = "single")
+```
+
+
+
+Merging operation and making 2 clusters:
+
+The agn.employ$merge output appears to show the sequence of cluster merging in an agglomerative hierarchical clustering process. Each row represents a step in the merging process. The two numbers in each row indicate the indices of the clusters that were merged at that step.
+
+For example, the first row 1 2 suggests that clusters 1 and 2 were merged initially. The second row 3 5 suggests that clusters 3 and 5 were merged next, and so on.
+
+This information is crucial for understanding the hierarchical structure of the clustering process and can be used to determine the hierarchy of clusters and the relationships between them.
+
+```{R}
+#  Description of cluster merging
+agn.employ$merge
+```
+
+
+Agglomerative clustering is more accurate with producing hierarchy
+
+It mapped the wine quality more accurately:
+
+instead of pairing good and poor quality wine, it is pairing poor and average quality wine
+
+Also it is assigning different branch to good, which is more accurate.
+
+Rest of the observations are same
+```{R}
+#Dendogram
+plot(as.dendrogram(agn.employ), xlab= "Distance between Wine",xlim=c(8,0),
+     horiz = TRUE,main="Dendrogram \n Wine Quality hierarchy")
+```
+
+
+
+The agglomerative coefficient here tells us that the data tends to form clusters to some extent. With a coefficient of 0.4, it means that there's a moderate tendency for the data points to group together. This suggests that there might be some identifiable patterns or similarities among the data points, but these clusters might not be as clear-cut or distinct as they would be if the coefficient were closer to 1.
+
+```{R}
+#Interactive Plots
+#plot(agn.employ,ask=TRUE)
+plot(agn.employ, which.plots=1)
+plot(agn.employ, which.plots=2)
+plot(agn.employ, which.plots=3)
+```
+
+Looking at the standardized data, it seems we're dealing with various attributes related to wine quality. Each row represents a different category or quality level, and the columns represent different features like volatile acidity, citric acid, chlorides, sulphates, and alcohol content.
+
+By standardizing the data, we've made it easier to compare across different features. Now, when we apply K-means clustering, we're essentially trying to find natural groupings within the data based on these standardized features. We're exploring how wines might naturally cluster together based on their characteristics.
+
+We're trying different values of k, which determine the number of clusters we're looking for. Each cluster represents a group of wines that share similar characteristics according to the features we've selected.
+
+However, without seeing the actual results of the clustering or knowing the specific goals of the analysis, it's hard to make definitive conclusions. The interpretation of the clusters would depend on the context of the data and what we're ultimately trying to achieve with this analysis.
+
+```{r}
+# K-Means Clustering
+
+matstd.wine_new <- scale(matstd.can[,1:4])
+# K-means, k=2, 3, 4, 5, 6
+# Centers (k's) are numbers thus, 10 random sets are chosen
+
+matstd.wine_new
+```
+
+ we've divided the wines into two clusters. Cluster 1, which contains "Excellent" and "Very Good" quality wines, exhibits higher levels of volatile acidity, citric acid, chlorides, sulphates, and alcohol compared to Cluster 2, where wines like "Average", "Bad", "Good", and "Poor" are found.
+
+The within-cluster sum of squares indicates how tightly packed the wines are within each group, and it seems like Cluster 2 is more tightly clustered.
+
+The percentage of variation accounted for by the two clusters is around 74.4%, suggesting that our clustering method has effectively captured a significant portion of the variability in the data.
+
+In summary, our K-means clustering has successfully separated wines into two distinct groups based on their standardized attributes, with one group showing higher overall levels across the features.
+```{R}
+(kmeans2.employ <- kmeans(matstd.wine_new,2,nstart = 10))
+# Computing the percentage of variation accounted for. Two clusters
+perc.var.2 <- round(100*(1 - kmeans2.employ$betweenss/kmeans2.employ$totss),1)
+names(perc.var.2) <- "Perc. 2 clus"
+perc.var.2
+```
+
+ partitioned the wines into three clusters. Cluster 1, with "Excellent" and "Very Good" wines, still displays higher levels of volatile acidity, citric acid, chlorides, sulphates, and alcohol compared to Cluster 3, which contains "Average", "Good", and "Poor" wines. Cluster 2, represented by the "Bad" quality wine, stands out with its distinct attributes.
+
+The within-cluster sum of squares suggests that the wines in Cluster 2 are perfectly grouped, while the other clusters have some variability within them.
+
+The percentage of variation accounted for by the three clusters is approximately 90.8%, indicating that our clustering method has effectively captured a substantial portion of the data's variability.
+
+In summary, our K-means clustering has effectively segmented the wines into three distinct groups based on their standardized attributes, with each cluster exhibiting different characteristics in terms of quality and chemical composition.
+```{R}
+
+# Computing the percentage of variation accounted for. Three clusters
+(kmeans3.employ <- kmeans(matstd.wine_new,3,nstart = 10))
+perc.var.3 <- round(100*(1 - kmeans3.employ$betweenss/kmeans3.employ$totss),1)
+names(perc.var.3) <- "Perc. 3 clus"
+perc.var.3
+
+```
+
+Observation:
+
+Cluster 1 has moderate volatile acidity, low citric acid, relatively high chlorides, low sulphates, and low alcohol content.
+
+
+Cluster 2 is characterized by high volatile acidity, low citric acid, high chlorides, low sulphates, and low alcohol content.
+
+
+Cluster 3 exhibits relatively low volatile acidity, low citric acid, low chlorides, moderate sulphates, and moderate alcohol content.
+
+
+Cluster 4 shows low volatile acidity, high citric acid, low chlorides, high sulphates, and high alcohol content.
+
+best % score indicating 4 clusters is good
+```{R}
+# Computing the percentage of variation accounted for. Four clusters
+(kmeans4.employ <- kmeans(matstd.wine_new,4,nstart = 10))
+perc.var.4 <- round(100*(1 - kmeans4.employ$betweenss/kmeans4.employ$totss),1)
+names(perc.var.4) <- "Perc. 4 clus"
+perc.var.4
+
+
+```
+
+```{R}
+# Computing the percentage of variation accounted for. Five clusters
+(kmeans5.employ <- kmeans(matstd.wine_new,5,nstart = 10))
+perc.var.5 <- round(100*(1 - kmeans5.employ$betweenss/kmeans5.employ$totss),1)
+names(perc.var.5) <- "Perc. 5 clus"
+perc.var.5
+(kmeans6.employ <- kmeans(matstd.wine_new,3,nstart = 10))
+```
+
+the K-means clustering with six clusters may not provide a meaningful segmentation of the data, as it explains only a small percentage of the overall variability. Adjusting the number of clusters or exploring alternative clustering algorithms may be necessary to obtain more interpretable and useful results.
+```{R}
+# Computing the percentage of variation accounted for. Six clusters
+perc.var.6 <- round(100*(1 - kmeans6.employ$betweenss/kmeans6.employ$totss),1)
+names(perc.var.6) <- "Perc. 6 clus"
+perc.var.6
+```
+
+Inference:
+
+The clustering solution with 2 clusters explains the highest percentage of variation among the options provided, indicating that it provides a relatively better representation of the underlying structure in the data compared to solutions with more clusters.
+
+
+With only two clusters, the solution is simpler and easier to interpret compared to solutions with more clusters, making it potentially more useful for practical applications.
+
+
+The cluster means and within-cluster sum of squares for the two clusters can provide valuable insights into the characteristics and differences between the clusters, helping to understand the underlying patterns in the data more effectively.
+
+
+While the solution with 2 clusters may provide a good starting point for analysis, it's essential to consider the specific context and goals of the analysis when determining the most appropriate number of clusters. In some cases, a more nuanced understanding of the data may require exploring solutions with a higher number of cluster
+```{R}
+attributes(perc.var.6)
+Variance_List <- c(perc.var.2,perc.var.3,perc.var.4,perc.var.5,perc.var.6)
+
+Variance_List
+plot(Variance_List)
+```
+
+
+
+Cluster 1: This cluster includes wines categorized as "Average" and "Poor".
+
+Cluster 2: Wines labeled as "Bad" belong to this cluster.
+
+Cluster 3: This cluster consists of wines categorized as "Good".
+
+Cluster 4: Wines labeled as "Excellent" and "Very Good" are grouped into this cluster.
+
+```{R}
+#
+# Saving four k-means clusters in a list
+clus1 <- matrix(names(kmeans4.employ$cluster[kmeans4.employ$cluster == 1]), 
+                ncol=1, nrow=length(kmeans4.employ$cluster[kmeans4.employ$cluster == 1]))
+colnames(clus1) <- "Cluster 1"
+clus2 <- matrix(names(kmeans4.employ$cluster[kmeans4.employ$cluster == 2]), 
+                ncol=1, nrow=length(kmeans4.employ$cluster[kmeans4.employ$cluster == 2]))
+colnames(clus2) <- "Cluster 2"
+clus3 <- matrix(names(kmeans4.employ$cluster[kmeans4.employ$cluster == 3]), 
+                ncol=1, nrow=length(kmeans4.employ$cluster[kmeans4.employ$cluster == 3]))
+colnames(clus3) <- "Cluster 3"
+clus4 <- matrix(names(kmeans4.employ$cluster[kmeans4.employ$cluster == 4]), 
+                ncol=1, nrow=length(kmeans4.employ$cluster[kmeans4.employ$cluster == 4]))
+colnames(clus4) <- "Cluster 4"
+list(clus1,clus2,clus3,clus4)
+
+
+```
+
+
+Based on heatmap: Data matrix we can observe that Excellent and very good are strongly correlated and colored as blue
+
+Bad, Poor, Average, Good have a similar behaviour based on clusters formed
+```{R}
+
+# Assuming matstd.can is your data matrix
+
+# Calculate the distance matrix
+dist_matrix <- dist(matstd.can)
+
+# Visualize the distance matrix
+fviz_dist(dist_matrix, gradient = list(low = "#00AFBB", mid = "white", high = "#FC4E07"))
+
+```
+
+
+4) Model Insights  (10 points): Cluster Analysis
+
+
+Observation:
+
+Performing clustering using 2 clusters:
+
+Very good and Excellent quality wine are in the same cluster
+
+Bad, Poor, Average and good are in same cluster but highly seperated,
+
+Bad seems to lie seperately
+
+Poor and Average are very close
+
+Good is also little close to Poor and Average
+```{R}
+# Load required libraries
+library(factoextra)
+
+# Visualize the optimal number of clusters using the gap statistic
+fviz_nbclust(matstd.can, kmeans, method = "gap_stat", k.max = 2)
+
+set.seed(123)
+km.res <- kmeans(matstd.can, 2, nstart = 25)
+# Visualize
+fviz_cluster(km.res, data = matstd.can,
+             ellipse.type = "convex",
+             palette = "jco",
+             ggtheme = theme_minimal())
+```
+
+No. of cluster=3 
+
+This clustering provides more accurate clusters:
+
+Cluster 1: Excellent and Very good
+
+Cluster 2: Poor, Average and Good
+
+Cluster 3: Bad quality wine is seperated
+```{R}
+# If your data has outliears , use PAM method
+pam.res <- pam(matstd.can, 3)
+# Visualize
+fviz_cluster(pam.res)
+
+# Hierarchial Clusiering
+res.hc <- matstd.can %>% scale() %>% dist(method = "euclidean") %>%
+  hclust(method = "ward.D2")
+```
+
+This is perfect example of grouping based on hierarchial clusters:
+
+Cluster group 1: Excellent and Very good share the same branch
+
+Cluster 2: Poor, Average share the same branch 
+
+Cluster 3: Good quality wine is also seperated
+
+Cluster 4: Bad quality wine is seperated
+
+```{r}
+fviz_dend(res.hc, k = 4, # Cut in four groups
+          cex = 0.5, # label size
+          k_colors = c("#2E9FDF", "#00AFBB", "#E7B800", "#FC4E07"),
+          color_labels_by_k = TRUE, # color labels by groups
+          rect = TRUE # Add rectangle around groups
+          )
+```
+
+4) Model Insights  (10 points): Cluster Analysis
+
+
+Viewing heigh based on cluster hierachy and have observation:
+
+total height = -1 for excellent and very good
+
+total height = -2 for bad, poor, average and good
+
+Cluster 2 seems to have better-defined clusters with higher average silhouette width, indicating that the observations within Cluster 2 are more similar to each other and distinct from observations in other clusters.
+
+
+Cluster 1, on the other hand, has a lower average silhouette width, suggesting that the observations within this cluster may not be as well-separated from observations in other clusters, potentially indicating less distinct clusters or overlap between clusters.
+
+
+A higher average silhouette width generally indicates better clustering quality, as it implies that the clusters are more distinct and well-separated.
+```{r}
+# Quality of Clustering
+
+set.seed(123)
+# Enhanced hierarchical clustering, cut in 3 groups
+res.hc <- matstd.can[, -1] %>% scale() %>%
+  eclust("hclust", k = 2, graph = FALSE)
+
+# Visualize with factoextra
+fviz_dend(res.hc, palette = "jco",
+          rect = TRUE, show_labels = FALSE)
+
+#Inspect the silhouette plot:
+fviz_silhouette(res.hc)
+
+# Silhouette width of observations
+sil <- res.hc$silinfo$widths[, 1:3]
+
+# Objects with negative silhouette
+neg_sil_index <- which(sil[, 'sil_width'] < 0)
+sil[neg_sil_index, , drop = FALSE]
+```
+
+
+```{R}
+
+# Factor Analysis
+
+library(psych)
+
+
+#for loading csv data
+library(readr)
+
+# Read the CSV file
+df <- read_csv("C:/Rutgers/Subjects/Spring Sem/Multivariate Analysis/Data/wine_new.csv")
+
+#dataframe
+df
+
+
+```
+
+```{R}
+
+# Assuming df is your dataframe
+attach(df)
+
+#selected these columns because of positive and negative correlation, other columns were not beneficial for analysis
+selected_cols <- df
+
+
+selected_cols
+```
+
+
+
+Data Pre-processing:
+
+Group by to calculate mean for all the attributes per target variable value.
+
+```{R}
+
+# Group by column 6 and calculate the average of all other columns within each group
+grouped_avg <- aggregate(. ~ quality, data = selected_cols[, -4], FUN = mean)
+
+# Print the grouped averages
+print(grouped_avg)
+
+```
+
+
+
+
+
+```{r}
+# Set the first column as row names
+row.names(grouped_avg) <- grouped_avg[, 1]  # Assuming the first column contains row names
+
+# Remove the first column from the dataframe
+grouped_avg <- grouped_avg[, -1]
+
+# View the dataframe
+grouped_avg
+```
+
+2. Explain the output for your factor model 
+
+principal(): This function from the psych package in R is used to perform PCA.
+
+nfactors=3: This parameter specifies the number of factors or components to be extracted from the data. In this case, it's set to 3, indicating that the analysis will produce three principal components.
+
+rotate="varimax": This parameter specifies the rotation method to be applied to the extracted components. "Varimax" is a common rotation method used in PCA to simplify the interpretation of the components by maximizing the variance of the squared loadings within each component.
+
+
+[1] Observation 1:
+
+Variance Explained: The three principal components (RC1, RC2, RC3) collectively explain a significant portion of the variance in the data. Specifically, RC1 accounts for 50% of the total variance, RC2 explains 26%, and RC3 explains 23%. Together, these components cumulatively explain 98% of the total variance in the data.
+
+Fit of the Model: The analysis suggests that the chosen model with three components provides a good fit to the data. This is supported by the root mean square of the residuals (RMSR) of 0.01, indicating that the model residuals are relatively small. Additionally, the empirical chi-square value of 0.09 with a probability greater than 1 suggests that the model fits the data well.
+
+Mean Item Complexity: The average complexity of the items in the analysis is 1.5, indicating that the variables in the dataset have moderate complexity in contributing to the principal components.
+
+Overall, the PCA results suggest that the three principal components derived from the dataset adequately summarize the underlying structure of the data, with a high proportion of variance explained and a good fit of the model to the data.
+
+
+RMSR of 0.01 suggests that the model's residuals, or the differences between the observed and predicted values, are quite small, indicating a good fit of the model to the data.
+
+empirical chi-square value of 0.09 indicates a good fit of the model to the data.
+
+[2] Observation 2:
+
+
+[1] We have 3 component factors: RC1, RC2 and RC3
+
+RC1 - has high positive correlation with: density, chlorides and Volatile acidity
+
+RC1 - negative correlation with:  alcohol and citric acid
+
+RC2 - High positive correlation with Sulphur dioxide components
+
+RC3 - High negative correlation with pH
+
+
+h2 analysis:
+[2]  "fixed acidity" has an h2 value of 0.95, indicating that 95% of its variance is explained by the principal components.
+
+[2] "alcohol" has h2 values of 0.99 indicating that 99% of its variance is explained by principal components.
+
+
+Com (Communality):
+These values represent the proportion of variance in each variable that is accounted for by the principal components.
+
+It is calculated as 1 - u2.
+
+Higher values indicate that more variance in the variable is explained by the principal components.
+
+For example, "fixed acidity" has a communality of 2.0, indicating that 2.0 units of variance are explained by the principal components.
+```{R}
+
+fit.pc <- principal(grouped_avg[-1], nfactors=3, rotate="varimax")
+fit.pc
+
+```
+
+
+These eigenvalues represent the amount of variance explained by each principal component. The higher the eigenvalue, the more variance the corresponding principal component explains in the dataset. In this case, PC1 explains the highest amount of variance, followed by PC2, PC3, and so on.
+
+```{r}
+round(fit.pc$values, 3)
+```
+
+Loadings:
+
+Variables with higher absolute loadings (close to 1 or -1) on a particular principal component contribute more to that component's interpretation.
+
+Observations:
+
+negative correlations for loadings:
+[1] "alcohol" has a high negative loading on RC1 (-0.913) 
+
+[2] sulphates = -0.943 
+
+Positive correlations:
+[3] density =  0.964
+
+[3] "volatile acidity" has a high positive loading on RC1 (0.811), indicating that these variables strongly contribute to RC1.
+
+
+```{r}
+fit.pc$loadings
+```
+
+
+
+These values represent the standardized loadings of the variables on each principal component. They indicate the strength and direction of the relationship between each variable and the corresponding component.
+
+Loadings for RC1:
+-0.3805855: This indicates that there is a negative relationship between the variable represented by this loading and the first principal component (RC1). The closer the value is to -1, the stronger the negative relationship.
+
+
+Loadings for RC3:
+-0.4155047: This also indicates a negative relationship between the variable represented by this loading and the third principal component (RC3). Similarly, the closer the value is to -1, the stronger the negative relationship.
+
+
+Loadings for RC2:
+0.7945425: This value indicates a positive relationship between the variable represented by this loading and the second principal component (RC2). The closer the value is to 1, the stronger the positive relationship.
+
+
+These loadings help in understanding the contribution of each variable to each principal component. Positive loadings indicate that the variable increases as the component increases, while negative loadings indicate the opposite.
+```{R}
+# Loadings with more digits
+for (i in c(1,3,2)) { print(fit.pc$loadings[[1,i]])}
+```
+
+
+Observations:
+
+[1] Fixed Acidity: 94.88% of the variance in fixed acidity is explained by the principal components.
+
+Volatile Acidity: 98.62% of the variance in volatile acidity is explained by the principal components.
+
+Citric Acid: 99.78% of the variance in citric acid is explained by the principal components.
+
+Chlorides: 99.94% of the variance in chlorides is explained by the principal components.
+
+Free Sulfur Dioxide: 97.81% of the variance in free sulfur dioxide is explained by the principal components.
+
+Total Sulfur Dioxide: 99.07% of the variance in total sulfur dioxide is explained by the principal components.
+
+Density: 98.44% of the variance in density is explained by the principal components.
+
+pH: 95.38% of the variance in pH is explained by the principal components.
+
+Sulphates: 99.86% of the variance in sulphates is explained by the principal components.
+
+Alcohol: 99.95% of the variance in alcohol is explained by the principal components.
+
+These values indicate how well each variable is represented by the principal components. Higher communalities suggest that the variable is well captured by the principal components and contributes significantly to the underlying structure.
+
+```{r}
+# Communalities
+fit.pc$communality
+```
+
+
+RC1:
+
+Observation 2: This observation has the highest positive score on RC1 among all observations, indicating a strong positive association with the factors represented by RC1. This suggests that Observation 2 is strongly influenced by the characteristics or variables captured by RC1.
+
+
+
+RC2:
+
+Observation 3: This observation has the highest negative score on RC2, suggesting a strong negative association with the underlying factors represented by RC2. This indicates that Observation 3 differs significantly from other observations in terms of the variables or characteristics represented by RC2.
+
+
+RC3:
+
+Observation 1: This observation has the highest positive score on RC3, indicating a strong positive association with the factors represented by RC3. This suggests that Observation 1 exhibits distinct characteristics or variables compared to other observations, as captured by RC3.
+
+```{R}
+# Rotated factor scores, Notice the columns ordering: RC1, RC3, RC2 and RC4
+fit.pc$scores
+```
+
+4) Model Insights  (10 points): Factor Analysis
+
+
+1. Decide how many Factors are ideal for your dataset 
+Ans: As per analysis 2-3 factors are best as per the elbow
+
+
+
+
+Observations:
+
+[1] 2 RCA's see, to indicate most of the variance before the elbow point. Indicating that we should only use 2 factors ideally, as RCA's.
+
+[2] rest of the points are below the reference line and cover up less variance.
+```{r}
+
+# Play with FA utilities
+
+fa.parallel(grouped_avg[-1]) # See factor recommendation
+```
+
+
+```{r}
+fa.plot(fit.pc) # See Correlations within Factors
+
+```
+
+Component Analysis:
+
+3. Show the columns that go into each factor 
+
+
+Correlation of variables to factors and contribution of each variable
+
+RC1: 
+density, chlorides and volatile acidity are positively correlated with RC1 
+
+sulphates and alcohol have high negative correlation with RC1
+
+
+RC3:
+[1] pH has negative correlation with RC3
+
+[2] Citric acid and fixed acidity is negatively correlated to RC3
+```{R}
+fa.diagram(fit.pc) # Visualize the relationship
+```
+
+4) Model Insights  (10 points): Factor Analysis
+
+
+4. Perform some visualizations using the factors 
+
+[1] 2-3 factors are the points where the elbows are present
+
+[2] 2 factors are the best as per elbow present at 2nd point after that the line is not very vertical
+```{r}
+plot(fit.pc$values, type="b", main="Scree Plot")
+```
+
+
+3. Show the columns that go into each factor 
+
+Observation:
+
+Used bar plot to map each attribute in respective factors.
+
+
+
+Correlation of variables to factors and contribution of each variable
+
+RC1: 
+density, chlorides and volatile acidity are positively correlated with RC1 
+
+sulphates and alcohol have high negative correlation with RC1
+
+
+RC3:
+[1] pH has negative correlation with RC3
+
+[2] Citric acid and fixed acidity is negatively correlated to RC3
+```{R}
+# Calculate the absolute values of factor loadings
+loadings_abs <- abs(fit.pc$loadings)
+
+# Create a bar plot for factor loadings
+barplot(t(loadings_abs), beside = TRUE, col = rainbow(ncol(loadings_abs)),
+        main = "Absolute Factor Loadings", xlab = "Variables", ylab = "Loadings",
+        legend.text = TRUE, las = 2, cex.names = 0.8)  # Rotate x-axis labels and adjust their size
+
+# Rotate x-axis labels to vertical position and adjust their size
+
+```
+
+4) Model Insights  (10 points): Factor Analysis
+
+The VSS scores suggest that a very simple structure with 2 factors achieves a high level of fit.
+
+The Velicer MAP suggests that 1 factor may be sufficient.
+However, the BIC and Sample Size Adjusted BIC favor a 3-factor solution, as indicated by the lowest values.
+
+Overall, considering all the criteria, a 3-factor solution seems to be the most appropriate choice for this factor analysis.
+
+We get best results when factors are 2 as per Very Simple Structure Life
+```{R}
+vss(grouped_avg[-1]) # See Factor recommendations for a simple structure
+
+
+```
+
+
+High Positive Correlations:
+
+volatile acidity & citric acid: They exhibit a strong negative correlation of approximately -0.80, indicating that as one variable increases, the other tends to decrease, and vice versa.
+
+chlorides & density: They show a strong positive correlation of approximately 0.96, suggesting that as one variable increases, the other also tends to increase, and vice versa.
+
+volatile acidity & chlorides: They have a strong positive correlation of approximately 0.96, indicating a similar trend as chlorides and density.
+
+Moderate Positive Correlations:
+
+free sulfur dioxide & total sulfur dioxide: They demonstrate a moderate positive correlation of approximately 0.91, suggesting a moderate relationship between these two variables.
+
+
+density & pH: They exhibit a moderate positive correlation of approximately 0.71, indicating a moderate positive relationship between the density and pH of the solution.
+Strong Negative Correlations:
+
+sulphates & chlorides: They display a strong negative correlation of approximately -0.99, indicating that as one variable increases, the other tends to decrease, and vice versa.
+
+sulphates & density: They show a strong negative correlation of approximately -0.98, suggesting an inverse relationship between sulphates and density.
+
+
+Moderate Negative Correlations:
+
+pH & citric acid: They have a moderate negative correlation of approximately -0.92, indicating an inverse relationship between pH and citric acid.
+
+
+pH & sulphates: They exhibit a moderate negative correlation of approximately -0.75, suggesting an inverse relationship between pH and sulphates.
+```{R}
+
+matstd.can <- scale(grouped_avg)
+matstd.can
+```
+
+Volatile Acidity and Citric Acid:
+
+They have a strong negative correlation of approximately -0.80, suggesting that as the volatile acidity increases, the citric acid tends to decrease, and vice versa.
+Chlorides and Density:
+
+They exhibit a strong positive correlation of approximately 0.96, indicating that as the concentration of chlorides increases, the density also tends to increase.
+Free Sulfur Dioxide and Total Sulfur Dioxide:
+
+They show a moderate positive correlation of approximately 0.91, suggesting that the levels of free sulfur dioxide and total sulfur dioxide tend to increase together.
+Sulphates and Chlorides:
+
+They display a strong negative correlation of approximately -0.99, indicating an inverse relationship between sulphates and chlorides.
+pH and Citric Acid:
+
+They have a moderate negative correlation of approximately -0.92, suggesting an inverse relationship between pH and citric acid.
+Sulphates and Density:
+
+They exhibit a strong negative correlation of approximately -0.98, indicating an inverse relationship between sulphates and density.
+Alcohol and Chlorides:
+
+They show a strong negative correlation of approximately -0.96, suggesting that as the alcohol content increases, the concentration of chlorides tends to decrease.
+
+```{r}
+
+# Computing Correlation Matrix
+corrm.emp <- cor(grouped_avg[-1])
+corrm.emp
+```
+
+
+
+```{R}
+plot(corrm.emp)
+```
+
+
+
+
+
+```{R}
+
+grouped_avg_pca <- prcomp(grouped_avg[-1], scale=TRUE)
+summary(grouped_avg_pca)
+plot(grouped_avg_pca)
+
+```
+
+
+
+The first principal component explains the highest variance with an eigenvalue of 6.337.
+The second principal component explains a substantial amount of variance with an eigenvalue of 2.109.
+The third principal component explains a moderate amount of variance with an eigenvalue of 0.478.
+The fourth to sixth principal components have eigenvalues of 0.063, 0.014, and 0.000 respectively, indicating diminishing contribution to the overall variance explained.
+
+
+```{r}
+
+
+# Load required libraries
+library(cluster)     # For cluster analysis
+library(readr)       # For reading data files
+library(factoextra)  # For visualizing multivariate analysis results
+library(magrittr)    # For using the pipe operator %>%
+library(NbClust)     # For determining the optimal number of clusters
+
+
+
+```
+
+
+```{r}
+
+#for loading csv data
+library(readr)
+
+# Read the CSV file
+df <- read_csv("C:/Rutgers/Subjects/Spring Sem/Multivariate Analysis/Data/wine.csv")
+
+#dataframe
+df
+
+
+
+```
+
+
+```{R}
+attach(df)
+xtabs(~ quality + alcohol, data = df)
+
+xtabs(~ quality + `citric acid`, data = df)
+
+
+xtabs(~ quality + `fixed acidity`, data = df)
+
+xtabs(~ quality + `volatile acidity`, data=df)
+xtabs(~ quality + `residual sugar`, data=df)
+xtabs(~ quality + chlorides, data=df)
+xtabs(~ quality + `free sulfur dioxide`, data=df)
+xtabs(~ quality + `total sulfur dioxide`, data=df)
+xtabs(~ quality + density, data=df)
+xtabs(~ quality + pH, data=df)
+xtabs(~ quality + sulphates, data=df)
+
+
+```
+
+```{R}
+# Assuming 'quality' is a column in the data frame 'df'
+distinct_values <- unique(df$quality)
+
+# Print distinct values
+print(distinct_values)
+
+# Count the number of unique values
+num_unique <- length(distinct_values)
+
+# Print the number of unique values
+print(num_unique)
+```
+
+
+```{r}
+
+table(df$quality)
+
+```
+```{r}
+
+# Recode the quality variable to binary (0 for "bad" and 1 for "good")
+#df$quality <- as.numeric(df$quality == "good")
+df
+```
+
+4) Model Insights  (10 points): (Regression)
+
+
+Alcohol:
+
+Estimate: 1.00468
+
+This indicates that for every one-unit increase in alcohol, the log-odds of the wine being of good quality (as opposed to bad quality) increase by 1.00468.
+
+
+Std. Error: 0.06884
+This shows the standard error associated with the coefficient estimate.
+
+
+z value: 14.594
+
+
+The z value is the coefficient estimate divided by its standard error. It indicates the number of standard deviations a parameter estimate is from the null hypothesis value of 0. The higher the z value, the more significant the predictor.
+
+p-value: <0.0000000000000002 ***
+
+
+The p-value indicates the significance of each predictor. In this case, the p-value is extremely low, indicating a significant relationship between alcohol and the quality of the wine.
+
+
+Volatile Acidity:
+
+Estimate: -3.54124
+
+This indicates that for every one-unit increase in volatile acidity, the log-odds of the wine being of good quality (as opposed to bad quality) decrease by 3.54124.
+
+
+Std. Error: 0.35470
+This shows the standard error associated with the coefficient estimate.
+
+
+z value: -9.984
+
+
+The z value is the coefficient estimate divided by its standard error. It indicates the number of standard deviations a parameter estimate is from the null hypothesis value of 0. The more negative the z value, the more significant the negative relationship.
+
+
+p-value: <0.0000000000000002 ***
+
+
+The p-value indicates the significance of each predictor. In this case, the p-value is extremely low, indicating a significant relationship between volatile acidity and the quality of the wine.
+
+
+```{r}
+attach(df)
+#df <- df[, !names(df) %in% "quality_new"]
+# Fit logistic regression model with the binary indicator
+# Fit logistic regression model with binary indicator
+
+# Convert 'quality' variable to a factor
+df$quality <- factor(df$quality, levels = c("bad", "good"))
+
+
+logistic_simple <- glm(quality ~ alcohol + `volatile acidity`  , data = df, family = "binomial")
+
+# Summary of the model
+summary(logistic_simple)
+
+```
+```{r}
+df
+```
+```{r}
+predicted.data <- data.frame(probability.of.quality=logistic_simple$fitted.values,quality=df$quality)
+
+
+options(scipen = 999)
+predicted.data
+```
+
+4) Model Insights  (10 points): (Regression)
+
+Model Acceptance 
+
+
+Inference:
+
+Volatile Acidity:
+As the volatile acidity level increases, the probability of wine quality being bad increases and the probability of wine quality being good decreases.
+
+
+Interpretation:
+
+At a volatile acidity level of 0.12:
+
+Probability of Quality Being Bad: 0.0395216662402474
+
+Probability of Quality Being Good: 0
+
+Interpretation: At a volatile acidity level of 0.12, the probability of wine quality being bad is approximately 0.0395, and the probability of wine quality being good is 0.
+
+At a volatile acidity level of 0.16:
+
+Probability of Quality Being Bad: 0.0395216662402474
+
+Probability of Quality Being Good: 0
+
+Interpretation: At a volatile acidity level of 0.16, the probability of wine quality being bad is approximately 0.0395, and the probability of wine quality being good is 0.
+
+At a volatile acidity level of 0.18:
+
+Probability of Quality Being Bad: 0.0395216662402474
+
+Probability of Quality Being Good: 0
+Interpretation: At a volatile acidity level of 0.18, the probability of wine quality being bad is approximately 0.0395, and the probability of wine quality being good is 0.
+
+At a volatile acidity level of 0.19:
+
+Probability of Quality Being Bad: 0.0395216662402474
+
+Probability of Quality Being Good: 0
+
+Interpretation: At a volatile acidity level of 0.19, the probability of wine quality being bad is approximately 0.0395, and the probability of wine quality being good is 0.
+
+This pattern continues for each level of volatile acidity, with the probability of wine quality being bad increasing and the probability of wine quality being good decreasing
+
+```{r}
+
+xtabs(~ probability.of.quality + `volatile acidity` + `citric acid`, data=predicted.data)
+```
+3) Residual Analysis (2 points)
+
+Null Deviance (2209.0):
+
+Represents the deviance when the model only consists of the intercept.
+
+The higher the value, the worse the model fits the data without any predictors.
+
+Residual Deviance (1804.7):
+
+Represents the deviance when the predictors are included in the model.
+
+The lower the value, the better the model fits the data with predictors.
+
+Degrees of Freedom (1598 for Null, 1596 for Residuals):
+
+Degrees of freedom are a measure of the amount of information that went into estimation of the parameters.
+
+It's the number of independent values or quantities that can be assigned to a statistical distribution.
+
+Difference (404.3):
+
+A measure of how much better the model with predictors explains the data compared to a model with just the intercept.
+
+A larger difference implies a better fit of the model.
+```{R}
+logistic <- glm(quality ~ alcohol +  sulphates, data=df, family="binomial")
+summary(logistic)
+
+
+```
+
+```{r}
+## Now calculate the overall "Pseudo R-squared" and its p-value
+ll.null <- logistic$null.deviance/-2
+ll.proposed <- logistic$deviance/-2
+(ll.null - ll.proposed) / ll.null
+
+
+```
+Predicted value = bad
+
+```{R}
+
+## The p-value for the R^2
+1 - pchisq(2*(ll.proposed - ll.null), df=(length(logistic$coefficients)-1))
+predicted.data$quality <- 
+data.frame(probability.of.quality=logistic$fitted.values,quality=df$quality)
+```
+
+
+4) Model Insights  (10 points): (Regression Prediction)
+
+Prediction 
+
+Prediction seem to be accurate below
+
+Inference:
+
+Low Predicted Probability of Bad Quality:
+
+Values like 0.2539028, 0.4152374, 0.3959143, 0.2539028, 0.2539028, 0.2066703, and 0.2077082 represent a low likelihood of bad quality.
+
+For instance, a value of 0.2539028 indicates a relatively low probability of being bad quality, but the possibility is still there.
+
+A value of 0.2066703 indicates a very low probability of bad quality.
+
+A value of 0.2077082 indicates a very low probability of bad quality.
+
+A value of 0.1606866 indicates an extremely low probability of bad quality.
+
+High Predicted Probability of Bad Quality:
+
+Values like 0.6691553, 0.6691553, 0.3393559, 0.7829626, 0.3940586, 0.4263695, 0.6774938 represent a high likelihood of bad quality.
+
+For instance, a value of 0.6691553 indicates a high probability of being bad quality.
+
+A value of 0.7829626 indicates a very high probability of bad quality.
+
+Good Quality:
+
+Values like 0.3521585, 0.3326894, 0.2793961, 0.6389391, and 0.5260103 indicate a prediction of good quality.
+
+For instance, a value of 0.3521585 indicates a probability of being good quality, but there is still a possibility of it being bad quality.
+
+
+
+probability:
+
+probability.of.quality: The predicted probabilities of each quality category (bad or good).
+
+quality:
+bad: Indicates low quality.
+good: Indicates high quality.
+
+```{R}
+data.frame(probability.of.quality=logistic$fitted.values,quality=df$quality)
+ggplot(data = predicted.data, aes(x = probability.of.quality, y = df$quality)) +
+  geom_point(aes(color = df$quality), alpha = 1, shape = 4, stroke = 2) +
+  xlab("Predicted probability of having good and bad quality wine") +
+  ylab("Binary Quality")
+```
+```{R}
+
+# From Caret
+pdata <- predict(logistic,newdata=df,type="response" )
+pdata
+
+
+
+```
+
+```{r}
+
+library(caret)
+library(pROC)
+
+pdataF <- as.factor(ifelse(test=as.numeric(pdata>0.5) == 0, yes="good", no="bad"))
+
+
+attributes(pdataF)
+
+```
+4) Model Insights  (10 points): (Regression)
+
+Model Accuracy 
+
+Accuracy: 0.2964
+
+Percentage of correctly predicted observations.
+
+95% CI: (0.2741, 0.3195)
+
+The confidence interval for the accuracy.
+
+No Information Rate (NIR): 0.5347
+
+The accuracy that could be achieved by always predicting the majority class.
+
+
+P-Value [Acc > NIR]: 1.00000
+
+The probability that the accuracy is greater than the No Information Rate.
+
+Kappa: -0.4065
+
+A measure of how closely the instances classified as the same class agree with the actual classification.
+
+A kappa of 1 represents perfect agreement, and a kappa of 0 represents agreement equivalent to random chance.
+
+Negative values suggest no agreement.
+
+Mcnemar's Test P-Value: 0.07364
+
+A statistical test used on paired nominal data.
+
+Tests if the row and column marginal frequencies are equal.
+
+Sensitivity (True Positive Rate): 0.2849
+
+The proportion of actual positive cases that were correctly identified.
+
+Specificity (True Negative Rate): 0.3064
+
+The proportion of actual negative cases that were correctly identified.
+
+Positive Predictive Value (PPV): 0.2634
+The proportion of positive identifications that were actually correct.
+
+Negative Predictive Value (NPV): 0.33
+
+The proportion of negative identifications that were actually correct.
+
+Prevalence: 0.4653
+
+The proportion of actual positive cases.
+
+Detection Rate: 0.1326
+
+The proportion of actual positive cases
+
+
+```{r}
+
+# Create confusion matrix
+confusionMatrix(pdataF, df$quality)
+```
+```{r}
+# From pROC
+roc(df$quality,logistic$fitted.values,plot=TRUE)
+par(pty = "s")
+roc(df$quality,logistic$fitted.values,plot=TRUE)
+
+
+```
+
+
+```{R}
+## NOTE: By default, roc() uses specificity on the x-axis and the values range
+## from 1 to 0. This makes the graph look like what we would expect, but the
+## x-axis itself might induce a headache. To use 1-specificity (i.e. the
+## False Positive Rate) on the x-axis, set "legacy.axes" to TRUE.
+roc(df$quality,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE)
+roc(df$quality,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage")
+```
+
+```{R}
+roc(df$quality,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4)
+roc(df$quality,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4)
+
+
+```
+
+
+```{R}
+
+## If we want to find out the optimal threshold we can store the
+## data used to make the ROC graph in a variable...
+roc.info <- roc(df$quality, logistic$fitted.values, legacy.axes=TRUE)
+str(roc.info)
+## tpp = true positive percentage
+## fpp = false positive precentage
+roc.df <- data.frame(tpp=roc.info$sensitivities*100, fpp=(1 - roc.info$specificities)*100,thresholds=roc.info$thresholds)
+
+head(roc.df) 
+
+```
+
+```{R}
+## head() will show us the values for the upper right-hand corner of the ROC graph, when the threshold is so low
+## (negative infinity) that every single sample is called "obese".
+## Thus TPP = 100% and FPP = 100%
+tail(roc.df) 
+```
+
+```{R}
+
+## tail() will show us the values for the lower left-hand corner
+## of the ROC graph, when the threshold is so high (infinity)
+## that every single sample is called "not obese".
+## Thus, TPP = 0% and FPP = 0%
+## now let's look at the thresholds between TPP 60% and 80%
+roc.df[roc.df$tpp > 60 & roc.df$tpp < 80,]
+roc(df$quality,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4, percent=TRUE)
+
+```
+
+```{r}
+roc(df$quality,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4, percent=TRUE, print.auc=TRUE)
+
+```
+`
+
+
+
+```{r}
+# Lets do two roc plots to understand which model is better
+roc(df$quality, logistic_simple$fitted.values, plot=TRUE, legacy.axes=TRUE, percent=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4, print.auc=TRUE)
+
+# Lets add the other graph
+plot.roc(df$quality, logistic$fitted.values, percent=TRUE, col="#4daf4a", lwd=4, print.auc=TRUE, add=TRUE, print.auc.y=40)
+legend("bottomright", legend=c("Simple", "Non Simple"), col=c("#377eb8", "#4daf4a"), lwd=4) 
+
+```
+```{r}
+library(readr)
+library(MASS)
+library(ggplot2)
+library(memisc)
+library(ROCR)
+library(dplyr)
+library(klaR)
+# Read the CSV file
+df <- read_csv("C:/Rutgers/Subjects/Spring Sem/Multivariate Analysis/Data/wine.csv")
+
+#dataframe
+df
+df1 <- as.matrix(df[,c(1:11)])
+df1
+```
+```{r}
+df_new <- cbind(df1, as.numeric(as.factor(df$quality))-1)
+```
+```{r}
+df_new
+colnames(df_new)[12] <- "quality"
+df_new
+```
+
+```{R}
+
+
+df_new_size <- floor(0.75 * nrow(df_new))
+df_new_size
+
+train_df_raw <- sample(nrow(df_new), size = df_new_size)
+train_df_raw
+
+train_raw.df <- as.data.frame(df_new[train_df_raw, ])
+train_raw.df
+
+test_raw.df <- as.data.frame(df_new[-train_df_raw, ])
+test_raw.df
+```
+
+```{r}
+df.lda <- lda(formula = train_raw.df$quality ~ ., data = train_raw.df)
+df.lda
+
+```
+```{R}
+train_raw.df$quality
+summary(df.lda)
+print(df.lda)
+par(mar = c(5, 5, 2, 2))  # Set margin size (bottom, left, top, right)
+plot(df.lda)
+
+```
+
+
+```{r}
+df.lda.predict <- predict(df.lda, newdata = test_raw.df)
+df.lda.predict$class
+df.lda.predict$x
+
+
+```
+```{R}
+# Get the posteriors as a dataframe.
+df.predict.posteriors <- as.data.frame(df.lda.predict$posterior)
+df.predict.posteriors
+pred <- prediction(df.predict.posteriors[,2], test_raw.df$quality)
+pred
+
+colnames(df.predict.posteriors)
+str(df.predict.posteriors)
+head(df.predict.posteriors)
+```
+
+4) Model Insights LDA
+
+
+```{r}
+roc.perf = performance(pred, measure = "tpr", x.measure = "fpr")
+auc.train <- performance(pred, measure = "auc")
+auc.train <- auc.train@y.values
+plot(roc.perf)
+abline(a=0, b= 1)
+text(x = .25, y = .65 ,paste("AUC = ", round(auc.train[[1]],3), sep = ""))
+```
+
+
+```{R}
+# Read the CSV file
+df <- read_csv("C:/Rutgers/Subjects/Spring Sem/Multivariate Analysis/Data/wine_new.csv")
+
+# Select specific columns by names
+df <- df[c("alcohol","volatile acidity","quality")]
+df
+```
+
+4) Model Insights  (10 points): LDA
+
+
+
+Prior Probabilities: These represent the class proportions in the dataset. Notably, "Average" and "Good" classes dominate, while "Bad" is rare.
+
+
+Group Means: Average alcohol and volatile acidity levels vary across quality classes.
+
+
+Coefficients of Linear Discriminants: Alcohol positively influences LD1, while volatile acidity negatively affects both LD1 and LD2.
+
+Proportion of Trace: LD1 explains most variance (95%), indicating its importance in class separation.
+
+
+In summary, alcohol and volatile acidity significantly influence quality class discrimination, with alcohol predominantly shaping LD1, while both variables contribute to LD2.
+```{R}
+
+r <- lda(formula = quality ~ ., data = df)
+r
+
+```
+
+2) Model Acceptance 
+
+Prior Probabilities of Groups: The prior probabilities indicate the proportion of each quality class in the dataset. "Average" and "Good" classes are most prevalent, while "Bad" is rarest.
+
+
+Group Means: Average alcohol and volatile acidity levels differ across quality classes. For instance, "Excellent" quality wines have the highest alcohol content on average.
+
+
+Coefficients of Linear Discriminants: The coefficients show the weights assigned to each predictor variable (alcohol and volatile acidity) in the linear combination used for classification. 
+
+Higher alcohol content and lower volatile acidity contribute positively to LD1.
+
+
+Proportion of Trace: LD1 explains approximately 95% of the total variance, suggesting its significance in class separation. LD2 explains the remaining 5%.
+```{R}
+summary(r)
+print(r)
+r$counts
+r$means
+r$scaling
+r$prior
+r$lev
+r$svd
+```
+```{r}
+#singular values (svd) that gives the ratio of the between- and within-group standard deviations on the linear discriminant variables.
+r$N
+r$call
+(prop = r$svd^2/sum(r$svd^2))
+
+
+
+```
+
+
+```{r}
+#we can use the singular values to compute the amount of the between-group variance that is explained by each linear discriminant. In our example we see that the first linear discriminant explains more than 99% of the between-group variance in the iris dataset.
+r2 <- lda(formula = quality ~ ., data = df, CV = TRUE)
+r2
+```
+```{R}
+
+
+attach(df)
+head(r2$class)
+#the Maximum a Posteriori Probability (MAP) classification (a factor)
+#posterior: posterior probabilities for the classes.
+head(r2$posterior, 3)
+train <- sample(1:150, 75)
+train
+# Assuming `train` is a vector of indices
+train_indices <- train
+train_df <- df[train_indices, ]
+
+# Calculate prior probabilities
+unique_classes <- unique(train_df$quality)
+num_classes <- length(unique_classes)
+prior <- rep(1/num_classes, num_classes)
+
+# Train the LDA model
+r3 <- lda(quality ~ ., 
+          train_df,
+          prior = prior)
+
+
+```
+4) Model Insights  (10 points)
+
+3) Prediction 
+
+
+Observation 1 has a high LD1 value and a moderate LD2 value, suggesting a higher probability of belonging to the "Average" quality class.
+
+
+Observation 2 has a moderate LD1 value and a negative LD2 value, suggesting a higher probability of belonging to the "Poor" quality class.
+
+
+Observation 3 has a negative LD1 value and a high LD2 value, indicating a higher probability of belonging to the "Very Good" quality class.
+
+
+Observation 4 has a moderate LD1 value and a moderate LD2 value, suggesting a higher probability of belonging to the "Average" quality class.
+
+
+Observation 5 has a high LD1 value and a negative LD2 value, indicating a higher probability of belonging to the "Average" quality class.
+
+
+Observation 6 has a negative LD1 value and a positive LD2 value, suggesting a higher probability of belonging to the "Good" quality class.
+```{r}
+plda = predict(object = r3, # predictions
+               newdata = df[-train, ])
+head(plda$class)
+head(plda$posterior, 6) # posterior prob.
+head(plda$x, 3)
+plot(r)
+plot(r3)
+
+```
+
+
+```{R}
+r <- lda(quality ~ .,
+         train_df,
+         prior = prior)
+prop.lda = r$svd^2/sum(r$svd^2)
+plda <- predict(object = r,
+                newdata = df)
+
+
+```
+```{r}
+dataset = data.frame(species = df[,"quality"],lda = plda$x)
+ggplot(dataset) + geom_point(aes(lda.LD1, lda.LD2, colour = quality, shape = quality), size = 2.5) + labs(x = paste("LD1 (", percent(prop.lda[1]), ")", sep=""),y = paste("LD2 (", percent(prop.lda[2]), ")", sep=""))
+```
+
+
+
+
+```{R}
+# lets play with accuracy
+# lets look at another way to divide a dataset
+
+set.seed(101) # Nothing is random!!
+sample_n(df,10)
+# Lets take a sample of 75/25 like before. Dplyr preserves class. 
+training_sample <- sample(c(TRUE, FALSE), nrow(df), replace = T, prob = c(0.75,0.25))
+train <- df[training_sample, ]
+test <- df[!training_sample, ]
+#lets run LDA like before
+lda.df <- lda(quality ~ ., train)
+# do a quick plot to understand how good the model is
+plot(lda.df, col = as.integer(train$quality))
+# Sometime bell curves are better
+# Set outer margin to zero
+par(oma = c(0, 0, 0, 0))
+
+# Set inner margin to a smaller value
+par(mar = c(2, 2, 2, 2))
+```
+```{r}
+# Set outer margin to zero
+par(oma = c(0, 0, 0, 0))
+
+# Set inner margin to a smaller value
+par(mar = c(2, 2, 2, 2))
+
+# Set the plot region directly
+par(plt = c(0.1, 0.9, 0.1, 0.9))
+
+# Plot the LDA result
+plot(lda.df, dimen = 1, type = "b")
+
+# Reset plotting parameters
+par(oma = c(0, 0, 0, 0))
+par(mar = c(5, 4, 4, 2) + 0.1)  # Reset to default values
+```
+```{r}
+
+attach(train)
+train
+```
+
+4) Residual Analysis 
+
+The residual analysis for the predictor variable "volatile acidity" reveals significant variability in the response variable "quality" that is not explained by this predictor.
+
+The residual sum of squares (SS) is 30.4343, indicating the total unexplained variability in the response variable after accounting for "volatile acidity."
+
+
+The mean square (MS) represents the average unexplained variability per degree of freedom, which is 0.02677.
+
+
+The associated F-value (F) is 47.938, indicating that there is a significant difference in the mean response variable among the groups defined by "quality."
+
+
+The p-value (Pr(>F)) is less than 2.2e-16, indicating strong evidence against the null hypothesis. This suggests that "volatile acidity" significantly influences the quality of the product.
+
+
+Overall, the residual analysis underscores the importance of "volatile acidity" as a predictor of product quality. However, it also implies that other factors not included in the model may contribute to the remaining variability in product quality. 
+
+Further investigation or refinement of the model may be necessary to capture these additional influences.
+
+
+
+5) Model Accuracy (2 points)
+Df (Degrees of Freedom):
+For the factor "quality": 5 degrees of freedom, representing the number of quality levels minus 1.
+
+
+For residuals: 1137 degrees of freedom, representing the error or unexplained variability.
+
+
+Sum Sq (Sum of Squares):
+
+For the factor "quality": 356.83, which is the variability in alcohol content explained by the quality levels.
+For residuals: 980.62, which is the unexplained variability or error.
+
+
+Mean Sq (Mean Square):
+
+For the factor "quality": 71.366, which is the average amount of variability in alcohol content explained by the quality levels.
+
+
+For residuals: 0.862, which is the average amount of unexplained variability or error.
+
+
+F value (F-statistic):
+
+This value tests the null hypothesis that there is no relationship between alcohol content and quality levels.
+The obtained F value of 82.747 is highly significant (p < 0.05), indicating strong evidence against the null hypothesis.
+
+
+Pr(>F) (p-value):
+
+This is the probability of observing an F statistic as extreme as the one obtained if the null hypothesis were true.
+
+The very small p-value (< 2.2e-16) indicates strong evidence against the null hypothesis, suggesting a significant relationship between alcohol content and quality levels.
+
+Overall, the ANOVA results suggest that alcohol content significantly influences the quality levels of the observations.
+
+```{r}
+# Reset to default values
+# THis plot shows the essense of LDA. It puts everything on a line and finds cutoffs. 
+# Partition plots
+# Print the column names of the train data frame
+train$quality <- factor(train$quality)
+
+partimat(train$quality ~ train$alcohol + train$`volatile acidity` , data=train, method="lda")
+
+
+# Lets focus on accuracy. Table function
+lda.train <- predict(lda.df)
+train$lda <- lda.train$class
+table(train$lda,train$quality)
+# running accuracy on the training set shows how good the model is. It is not an indication of "true" accuracy. We will use the test set to approximate accuracy
+lda.test <- predict(lda.df,test)
+test$lda <- lda.test$class
+table(test$lda,test$quality)
+
+
+# Wilk's Lambda and F test for each variablw
+m <- manova(cbind(alcohol,`volatile acidity`)~quality,data=df)
+summary(m,test="Wilks")
+summary(m,test="Pillai")
+summary.aov(m)
+```
+
+
+5) Learnings and Takeaways  (20 points)
+
+
+Positive Attributes (Positive Correlation with Quality):
+
+Alcohol: Generally indicates that higher alcohol levels might be associated with better quality wines.
+
+
+Sulphates: A slight positive relationship with quality may suggest that sulphates contribute favorably to certain aspects of wine preservation that are appreciated in quality wines.
+
+
+Free Sulfur Dioxide: A mild positive link suggests a small favorable effect on quality, possibly through its role in maintaining freshness.
+Citric Acid: Weak positive association indicates it might have a slightly favorable impact on wine’s taste and perceived quality.
+
+
+Negative Attributes (Negative Correlation with Quality):
+
+Volatile Acidity: A negative association suggests that higher levels are typically found in lower quality wines due to the potential for undesirable flavors.
+
+
+Density: Seems to have a negative impact, where higher density may be associated with lower quality wines.
+Fixed Acidity: Slight negative correlation may imply that higher levels of fixed acidity aren't typically preferred in quality wines.
+
+
+Neutral Attributes (Minimal or No Correlation with Quality):
+
+pH: The correlation is so minimal that pH levels seem to have a negligible impact on quality in this context.
+Total Sulfur Dioxide: Very low positive correlation, not significantly affecting quality perception.
+
+
+Chlorides: Very weak correlation, indicating that the presence of chlorides does not have a strong influence on the quality.
+Residual
+
+Sugar: Has a very low correlation, suggesting that sugar levels do not play a major role in determining the quality of these wines.

@@ -1,0 +1,1721 @@
+---
+title: "Final_project_Social_Media"
+output: html_document
+date: "2024-04-28"
+---
+Problem Statement:
+
+Primary objective is to understand the factors contributing to This dataset is gathered practically based on applications used on phone such as social media, learning application and research application by analyzing time consumed on whatsapp, instagram, linkedIn, Reddit and Twitter.
+
+
+We aim to investigate how these social media components influence the Weekly feelings (1-5) and morning tiredness(1 and 0). 
+
+
+By identifying the key contributors to Time Consumption, we strive to provide insights that can assist application users in enhancing their productivity in daily life.
+
+
+
+Questions:
+
+1) Explain the data collection process (10 points)
+
+
+Updation frequency: Weekly 
+
+
+Description:
+
+This dataset is gathered practically based on applications used on phone such as social media, learning application and research application by analyzing time usage for each application by MVA students.
+
+objective is to use the provided data to predict dependent variables such as impact of using such applications on personal basis (Morning Tiredness, Weekly Feeling). This project presents a straightforward yet demanding task: forecasting the impact of using social media on feeling.
+
+
+This data frame contains the following columns:
+
+Input variables (based on time consumption):
+
+Independent variables :
+
+Instagram_Time
+Linkedin_Time
+Snapchat_Time
+Twitter_Time
+Whatsapp_Time
+Youtube_Time
+OTT_Time
+Reddit_Time
+Application Type
+Interview_call_received
+Networking
+Learning
+
+
+Dependent variable :
+
+Mood_Productivity
+Morning_tireness
+Weekly_Feelings
+
+
+
+Objective:
+Understand the Dataset & cleanup (if required).
+
+
+Build classification models to predict the weekly Mood.
+
+
+Also fine-tune the hyperparameters & compare the evaluation metrics of various classification algorithms.
+
+Loading Data:
+```{R}
+library(MASS)
+library(ggplot2)
+library(memisc)
+library(ROCR)
+library(dplyr)
+library(klaR)
+# Library to read CSV file
+library(readr)
+
+# Data visualization libraries
+library(ggplot2)     # ggplot2 for creating versatile plots
+library(ggcorrplot)  # ggcorrplot for visualizing correlation matrices
+library(ggridges)    # ggridges for creating ridge plots
+library(ggvis)       # ggvis for interactive web-based visualizations
+library(ggthemes)    # ggthemes for additional plot themes
+library(cowplot)     # cowplot for arranging and annotating plots
+library(gganimate)   # gganimate for creating animated plots
+
+# Data manipulation and analysis libraries
+library(caret)       # caret for machine learning model building and evaluation
+library(dplyr)       # dplyr for data manipulation
+library(tidyverse)   # tidyverse for data wrangling
+library(GGally)      # GGally for plot matrix visualizations
+# Load the psych package
+library(psych)
+
+options(scipen=999)
+library(readr) # Library to read CSV file
+library(ggplot2)
+# Load necessary libraries
+library(ggplot2)
+library(ggcorrplot)
+library(caret)
+library(scatterplot3d)
+library(SciViews)
+library(car)
+library(lattice)
+library(GGally)
+# load packages
+library(lattice)
+library(ggplot2)
+
+
+library(ggridges)
+library(ggvis)
+library(ggthemes)
+library(cowplot)
+library(gapminder)
+library(gganimate)
+library(dplyr)
+library(tidyverse)
+
+# Additional visualization libraries
+library(scatterplot3d)  # scatterplot3d for 3D scatter plots
+library(SciViews)       # SciViews for scientific data visualization
+library(car)            # car for additional regression plots
+library(lattice)        # lattice for lattice plots
+library(grid)           # grid for low-level plotting functions
+library(gridExtra)      # gridExtra for arranging multiple plots
+library(RColorBrewer)  # RColorBrewer for additional color palettes
+library(gapminder)     # gapminder for example dataset
+
+```
+```{r}
+library(readxl)
+social_media <- read_excel("C:/Users/Vishal/Downloads/MVA_CLASS_COMBINE.xlsx")
+social_media
+str(social_media)
+social_media_cleaned <- social_media[,-1]
+
+```
+
+
+
+changing column names:
+
+
+```{R}
+
+#changing column names
+change_cols_index <- c(2,4,6,8,10,12,14,16,17,18,19,20,21,22,23,24)
+change_cols_name <- c("Instagram_Time", "Linkedin_Time", "Snapchat_Time", "Twitter_Time", "Whatsapp_Time", "Youtube_Time", "OTT_Time", "Reddit_Time", "Application Type", "Interview_call_received", "Networking", "Learning", "Mood_Productivity", "Morning_tireness", "Morning_tireness", "Weekly_Feelings")
+colnames(social_media_cleaned)[change_cols_index] <- change_cols_name
+
+
+
+social_media_cleaned
+
+
+```
+
+
+
+Cleaning Data:
+
+Cleaning Null values
+
+```{R}
+# Convert "NA", "N/A", "n/a", "na", "N.A", "n.a" to 0
+social_media_cleaned[social_media_cleaned == "NA" | social_media_cleaned == "N/A" | social_media_cleaned == "na" | social_media_cleaned == "n/a" | social_media_cleaned == "N.A" | social_media_cleaned == "n.a" | social_media_cleaned == "0" | social_media_cleaned == ""] <- NA
+social_media_cleaned
+
+```
+
+
+Null values converted to 0
+
+```{R}
+social_media_cleaned[is.na(social_media_cleaned)] <- '0'
+social_media_cleaned
+```
+
+
+Keeping relevant columns only:
+All time columns + label to predict ("How did you feel enitre week") + Application type
+
+```{R}
+# Define a function to convert time strings to decimal hours
+convert_to_decimal_hours <- function(time_string) {
+# Check if NA values are present
+if (any(is.na(time_string))) {
+         return(rep(NA, length(time_string)))  # Return NA for NA values
+     }
+     
+# Define a function to convert HH:MM format to decimal hours
+     hhmm_to_decimal <- function(hhmm) {
+         parts <- as.numeric(strsplit(hhmm, ":")[[1]])  # Split into hours and minutes
+         hours <- parts[1]
+         minutes <- ifelse(length(parts) > 1, parts[2], 0)  # Handle missing minutes
+         total_hours <- hours + minutes / 60
+         return(total_hours)
+     }
+     
+# Convert time strings to decimal hours
+decimal_hours <- sapply(time_string, function(x) {
+         if (grepl("^\\d+:\\d+$", x)) {
+             return(hhmm_to_decimal(x))  # Convert HH:MM format
+         } else if (grepl("^\\d+\\.\\d+$", x)) {
+             return(as.numeric(x))  # Convert decimal format
+         } else if (grepl("^\\d+$", x)) {
+             return(as.numeric(x))  # Convert whole numbers
+         } else {
+             return(NA)  # Return NA for other cases
+         }
+     })
+     
+     return(decimal_hours)
+}
+
+time_columns <- c("Instagram_Time", "Linkedin_Time", "Snapchat_Time", "Twitter_Time", "Whatsapp_Time", "Youtube_Time", "OTT_Time", "Reddit_Time") 
+# Apply the conversion function to all time columns
+social_media_cleaned[time_columns] <- lapply(social_media_cleaned[time_columns], convert_to_decimal_hours)
+ 
+# Verify the result
+str(social_media_cleaned)
+
+#Dropping the name columns
+social_media_cleaned <- social_media_cleaned[, -c(1, 3, 5, 7, 9, 11, 13, 15)] 
+social_media_cleaned
+```
+
+Data Preporcessing:
+
+Replace mean value with null values for data preprocessing
+
+```{R}
+# Loop through each column in time_columns
+social_media_cleaned[time_columns] <- lapply(social_media_cleaned[time_columns], function(x) {
+  # Calculate mean of the column excluding NA values
+  mean_value <- mean(x, na.rm = TRUE)
+  # Replace NA values with the mean
+  x[is.na(x)] <- mean_value
+  return(x)
+})
+
+# Print the updated data frame
+print(social_media_cleaned)
+```
+*************************2) Exploratory Data Analysis and Visualizations  (50 points)********************************
+
+Univariate Analysis 
+
+Instagram Time: Time spent on Instagram has a slightly wider IQR than WhatsApp, indicating a more varied amount of usage among the users, with some outliers spending a lot more time.
+
+
+Snapchat Time: The IQR for Snapchat is similar to Instagram, but the median appears to be slightly lower, which suggests that users, on average, might be spending less time on Snapchat compared to Instagram.
+
+
+WhatsApp Time: In this context, when compared with Instagram and Snapchat, the WhatsApp box plot indicates a lower median time and fewer outliers, suggesting less variability in usage times.
+
+WhatsApp Time: Users tend to spend a low to moderate amount of time on WhatsApp, with a relatively tight interquartile range (IQR), suggesting consistent usage among the population sampled.
+
+
+YouTube Time: The spread of time spent on YouTube is similar to WhatsApp, with some outliers indicating that a few users spend significantly more time on this platform.
+
+
+OTT Time: Over-The-Top (OTT) media services show a wider IQR compared to WhatsApp and YouTube, which indicates more variability in how much time users spend streaming content.
+
+Reddit Time: The majority of users spend very little time on Reddit, as indicated by the compact box and the IQR close to zero. 
+
+However, there are outliers that spend a considerably higher amount of time on the platform.
+From the second image:
+
+```{r}
+boxplot(social_media_cleaned[,1:5])
+boxplot(social_media_cleaned[,5:8])
+
+
+```
+```{R}
+
+# Define a function to normalize a numeric vector to the range [0, 1]
+normalize <- function(x) {
+  (x - min(x)) / (max(x) - min(x))
+}
+
+# Apply normalization to columns 1 to 8
+social_media_normalized <- as.data.frame(lapply(social_media_cleaned[, 1:8], normalize))
+
+# Check the structure of the normalized dataset
+str(social_media_normalized)
+
+# Now you can use the boxplot function on the normalized dataset
+boxplot(social_media_normalized)
+boxplot(social_media_normalized[,1:5])
+boxplot(social_media_normalized[,5:8])
+
+
+
+```
+
+
+Count of Morning Feeling:
+
+A larger number of individuals reported not feeling tired in the morning (as indicated by the "No" bar) compared to those who did feel tired (as indicated by the "Yes" bar).
+
+
+This suggests that the majority of the respondents start their day feeling refreshed rather than tired.
+
+
+Count of Mood Productivity:
+
+The overwhelming majority of individuals reported feeling productive (as shown by the "Yes" bar), with only a very small number indicating they did not feel productive (as indicated by the "No" bar).
+
+This could imply that the respondents generally have a positive mood concerning productivity or that they are engaged in activities or routines that promote productivity.
+
+
+Count of Weekly Feeling:
+
+The most common rating for weekly feelings is a 3 (as indicated by the green bar), suggesting that respondents generally feel neutral or average about their week.
+
+Fewer individuals rated their weekly feelings as 4 (as indicated by the yellow bar), showing some positivity but less than the neutral response.
+
+Very few individuals rated their weekly feelings as highly positive (5) or highly negative (2), as indicated by the blue and red bars respectively.
+
+This distribution suggests that extreme feelings (either very positive or very negative) are less common among the respondents.
+
+
+These insights provide an overview of how the group sampled perceives their mood and productivity, with a tendency towards not feeling tired in the morning, feeling productive, and experiencing a range of weekly feelings skewing away from the extremes towards a more moderate or neutral experience.
+
+```{R}
+# Count the occurrences of "bad" and "good" in the quality column
+quality_counts <- table(social_media_cleaned$Morning_tireness)
+
+# Create a bar plot with count values displayed on top
+ggplot(data = NULL, aes(x = names(quality_counts), y = quality_counts)) +
+  geom_bar(stat = "identity", fill = c("pink", "green")) +
+  geom_text(aes(label = quality_counts), vjust = -0.5, color = "black", size = 4) +  # Add count values on top of bars
+  labs(title = "Count of Morning Feeling", x = "Morning Feeling", y = "Count") +
+  theme_minimal()
+
+
+# Count the occurrences of "bad" and "good" in the quality column
+Productivity_counts <- table(social_media_cleaned$Mood_Productivity)
+
+# Create a bar plot with count values displayed on top
+ggplot(data = NULL, aes(x = names(Productivity_counts), y = Productivity_counts)) +
+  geom_bar(stat = "identity", fill = c("red", "green")) +
+  geom_text(aes(label = Productivity_counts), vjust = -0.5, color = "black", size = 4) +  # Add count values on top of bars
+  labs(title = "Count of Mood Productivity", x = "Mood Productivity", y = "Count") +
+  theme_minimal()
+
+
+Weekly_count <- table(social_media_cleaned$Weekly_Feelings)
+# Create a bar plot with count values displayed on top
+ggplot(data = NULL, aes(x = names(Weekly_count), y = Weekly_count)) +
+  geom_bar(stat = "identity", fill = c("red", "green","yellow","blue")) +
+  geom_text(aes(label = Weekly_count), vjust = -0.5, color = "black", size = 4) +  # Add count values on top of bars
+  labs(title = "Count of Weekly Feeling", x = "Weekly Feeling", y = "Count") +
+  theme_minimal()
+
+```
+
+Morning Tiredness:
+
+Yes - has larger area in bottom right area of star
+
+No - is thin compared to Yes
+```{R}
+
+
+stars(social_media_cleaned,labels = social_media_cleaned$Weekly_Feelings)
+
+stars(social_media_cleaned,labels = social_media_cleaned$Morning_tireness)
+
+```
+
+
+Multivariate Analysis:
+
+Correlation Plot 
+
+From the first heatmap (without Weekly Feelings):
+
+There is a very high positive correlation between time spent on Twitter and WhatsApp, suggesting that individuals who spend more time on one tend to also spend more time on the other.
+
+
+LinkedIn and Snapchat time are also highly positively correlated, indicating a similar behavior pattern as observed with Twitter and WhatsApp.
+
+
+YouTube and OTT platforms share a significant positive correlation, which might reflect a broader interest in video content consumption across these platforms.
+
+
+Instagram time shows moderate to low correlations with other platforms, suggesting more independent usage patterns from the others.
+
+
+
+From the second heatmap (including Weekly Feelings):
+
+
+LinkedIn time, Snapchat time, and Twitter time show strong positive correlations with one another, similar to the first heatmap.
+
+The addition of 'Weekly Feelings' introduces a new perspective, but it appears to have a negligible to slightly negative correlation with all platforms, the strongest negative correlation being with LinkedIn time.
+
+Reddit time shows negative correlations with LinkedIn, Snapchat, and Twitter time, and a very slight positive correlation with Instagram time, suggesting different user behavior patterns between these platforms.
+
+Reddit time has a small negative correlation with 'Weekly Feelings', indicating that those who spend more time on Reddit may have slightly lower 'Weekly Feelings' scores, but the relationship is not strong.
+
+```{r}
+colnames(social_media_cleaned)
+
+correlation_matrix<- cor(social_media_cleaned[,0:8])
+ggcorrplot(correlation_matrix,type = "lower", lab = TRUE)
+
+
+
+# Calculate the correlation matrix for columns 1 to 8 and the 16th column
+correlation_matrix <- cor(social_media_cleaned[, c(0:8, 16)])
+
+# Load the ggcorrplot library
+library(ggcorrplot)
+
+# Plot the correlation matrix with ggcorrplot
+ggcorrplot(correlation_matrix, type = "lower", lab = TRUE)
+```
+
+```{r}
+colnames(social_media_cleaned)
+x <- dist(scale(social_media_cleaned[, 0:8],
+                center = FALSE))
+
+as.dist(round(as.matrix(x), 2)[1:15, 1:15])
+
+
+x <- dist(scale(social_media_cleaned[, 1:8],
+                center = FALSE))
+
+Y<- as.dist(round(as.matrix(x), 2)[1:21, 1:21])
+
+
+```
+```{r}
+X <- social_media_cleaned[,0:8]
+cm <- colMeans(X)
+cm
+
+```
+
+
+In the case of this Q-Q plot, it seems to assess normality of the "WhatsApp_Time" data:
+
+If the data points fall along the line (or very close to it), this would indicate that the data are normally distributed.
+
+The plotted points in the middle section of the graph seem to follow the line fairly closely, suggesting that the data in this section follow a normal distribution.
+
+However, towards the ends (especially in the upper right corner), the data points deviate from the line, indicating that the distribution of "WhatsApp_Time" has heavier tails than a normal distribution. This means there are more extreme values (either very high or very low) than what would be expected in a normal distribution.
+
+Overall, the Q-Q plot suggests that while the "WhatsApp_Time" data may approximate a normal distribution in its central values, the presence of outliers or a heavy-tailed nature deviates from normality. 
+
+This could influence statistical tests or models that assume normality of the data, and alternative methods or transformations might be needed to address this non-normality.
+
+
+```{r}
+library(reshape2)
+
+S <- cov(X)
+
+S
+
+
+d <- apply(X, MARGIN = 1, function(X)t(X - cm) %*% solve(S) %*% (X - cm))
+d
+
+qqnorm(social_media_cleaned$Whatsapp_Time, main = "Whatsapp_Time")
+qqline(social_media_cleaned$Whatsapp_Time)
+
+```
+```{r}
+with(data=social_media_cleaned,t.test(Whatsapp_Time[Morning_tireness=="Yes"],Whatsapp_Time[Morning_tireness=="No"],var.equal=TRUE))
+
+with(data=social_media_cleaned,t.test(Instagram_Time[Morning_tireness=="Yes"],Instagram_Time[Morning_tireness=="No"],var.equal=TRUE))
+```
+
+
+```{R}
+var.test(social_media_cleaned$Instagram_Time[social_media_cleaned$Morning_tireness=="Yes"],social_media_cleaned$Instagram_Time[social_media_cleaned$Morning_tireness=="No"])
+```
+```{r}
+matstand <- scale(social_media_cleaned[,1:8]) # Scaling data again to improve score of f and p value
+matstand
+attach(social_media_cleaned)
+matsurv <- matstand[Morning_tireness == "Yes",]
+matsurv
+var.test(Instagram_Time[Morning_tireness=="Yes"],Instagram_Time[Morning_tireness=="No"])
+```
+
+```{r}
+# Load the caret package
+library(caret)
+
+# Specify the column names for one-hot encoding, excluding Morning_tireness
+columns <- setdiff(names(social_media_cleaned), "Morning_tireness")
+social_media_cleaned
+# Create a formula for one-hot encoding excluding Morning_tireness
+formula_str <- paste("Morning_tireness ~ .", collapse = " + ")
+```
+```{R}
+# Find columns with "_Time"
+time_columns <- grep("_Time$", names(social_media_cleaned), value = TRUE)
+time_columns
+
+# Define additional columns to keep
+additional_columns <- c("Morning_tireness", "Application Type")
+
+# Combine time columns and additional columns to keep
+columns_to_keep <- c(time_columns, additional_columns)
+
+# Select columns to keep from the dataframe
+social_media_subset <- social_media_cleaned[columns_to_keep]
+```
+```{R}
+# Convert the formula string to a formula object
+formula <- as.formula(formula_str)
+
+# Create dummy variables
+dummy <- dummyVars(formula, data = social_media_subset)
+
+# Apply one-hot encoding
+social_media_subset_encoded <- predict(dummy, newdata = social_media_subset)
+
+# Convert the result to a data frame
+social_media_subset_encoded <- as.data.frame(social_media_subset_encoded)
+
+# Convert Morning_tireness back to a categorical variable
+social_media_subset_encoded$Morning_tireness <- as.factor(social_media_subset$Morning_tireness)
+
+
+social_media_subset_encoded1 <- social_media_subset_encoded
+
+
+```
+```{R}
+df_pca <- prcomp(social_media_subset_encoded1[1:14],scale=TRUE)
+df_pca
+summary(df_pca)
+```
+
+
+
+
+
+```{r}
+# variable means stored in df_pca$center
+df_pca$center
+
+# variable standard deviations stored in df_pca$scale
+df_pca$scale
+
+
+# singular values (square roots of eigenvalues) stored in df$sdev
+# A table containing eigenvalues and %'s accounted, follows
+# Eigenvalues are sdev^2
+
+(eigen_df <- df_pca$sdev^2)
+names(eigen_df) <- paste("PC",1:11,sep="") #formatting PC with column no. for respective PC's
+eigen_df
+
+
+sumlambdas <- sum(eigen_df)
+sumlambdas
+
+propvar <- eigen_df/sumlambdas
+propvar
+
+```
+
+
+
+****3) Application of different MVA models  (10 points)*****
+
+[1] PCA
+
+[2] Clustering Analysis
+
+[3] Factor Analysis
+
+[4] Logistic Regression
+
+[5] Linear Discriminant Analysis
+
+
+
+*********4) Model Insights  (10 points)**************
+
+
+PCA Analysis:
+
+
+A large proportion of the variability in the dataset can be captured by a reduced number of components (in this case, the first six principal components).
+
+
+This suggests that dimensionality reduction using PCA could be very effective for this dataset, potentially reducing the complexity of the data without losing a significant amount of information.
+
+
+Decisions on how many components to keep for further analysis might involve a trade-off between a desire for simplicity (fewer components) and the need to retain as much information as possible. In practice, a decision might be made to keep enough components to explain, for example, over 80-90% of the variance.
+
+
+If this is for a machine learning task, the analysis could proceed with these reduced dimensions to simplify the model and potentially improve generalizability.
+```{R}
+library(waterfall)
+
+cumvar_df <- cumsum(propvar)
+cumvar_df
+
+# Load the waterfall package
+library(waterfall)
+
+# Create a data frame for the waterfall chart
+waterfall_data <- data.frame(
+  labels = paste("PC", 1:length(propvar)),
+  values = propvar
+)
+
+# Calculate the cumulative sum of the proportion of variance
+cumulative_propvar <- cumsum(waterfall_data$values)
+
+# Plot the waterfall chart with rotated x-axis labels
+barplot(cumulative_propvar, names.arg = waterfall_data$labels, 
+        main = "Waterfall Chart of Cumulative Proportion of Variance",
+        xlab = "Principal Component", ylab = "Cumulative Proportion of Variance",
+        las = 2, cex.names = 0.8)  # las = 2 for vertical labels, cex.names to adjust label size
+
+
+#Based on the cumulative plot we can select PC1 to PC5 as they indicate high contribution to the total
+```
+```{r}
+# Identifying the scores by their Quality of wine 
+dftyp_pca <- cbind(data.frame(Morning_tireness),df_pca$x)
+dftyp_pca
+```
+
+
+PC1: Those who reported "Yes" for morning tiredness have a higher loading on PC1 than those who reported "No". This suggests that PC1 captures some variability in the data that is more strongly associated with those feeling tired in the morning.
+
+
+PC2: Similarly, those who feel tired in the morning ("Yes") also have a positive and higher loading on PC2 compared to those who do not feel tired ("No"), although the values are smaller than those for PC1.
+
+
+PC3, PC4, and PC5: The pattern continues with higher loadings for the "Yes" group across these components. However, the sign of the loading for PC4 is reversed between the groups, with the "No" group having a positive loading and the "Yes" group a negative one. This indicates that PC4 captures a dimension of the data where the difference between those who feel tired and those who don't is contrasted.
+
+```{r}
+
+# Group by Morning_tireness and calculate the mean for all attributes
+tabmeansPC <- aggregate(dftyp_pca[, 2:ncol(dftyp_pca)], 
+                        by = list(Morning_tireness = social_media_subset_encoded1$Morning_tireness), 
+                        mean)
+
+# Print the result
+print(tabmeansPC)
+
+```
+```{r}
+tabmeansPC <- tabmeansPC[rev(order(tabmeansPC$Morning_tireness)),]
+tabmeansPC
+
+tabfmeans <- t(tabmeansPC[,-1])
+tabfmeans
+
+colnames(tabfmeans) <- t(as.vector(tabmeansPC[1]$Morning_tireness))
+tabfmeans
+
+# Standard deviations of scores for all the PC's classified by Quality status
+tabsdsPC <- aggregate(dftyp_pca[,2:11],by=list(Morning_tireness=social_media_subset_encoded1$Morning_tireness),sd)
+
+#Transpose the resulting subset by transposition on rows and columns of PC's and Quality
+tabfsds <- t(tabsdsPC[,-1])
+
+colnames(tabfsds) <- t(as.vector(tabsdsPC[1]$Morning_tireness))
+tabfsds
+```
+```{R}
+t.test(PC1~social_media_subset_encoded1$Morning_tireness,data=dftyp_pca)
+t.test(PC2~social_media_subset_encoded1$Morning_tireness,data=dftyp_pca)
+t.test(PC3~social_media_subset_encoded1$Morning_tireness,data=dftyp_pca)
+t.test(PC4~social_media_subset_encoded1$Morning_tireness,data=dftyp_pca)
+t.test(PC5~social_media_subset_encoded1$Morning_tireness,data=dftyp_pca)
+```
+```{r}
+# Levene's tests (one-sided)
+library(car)
+
+#leveneTest function takes the formula PC(1 to 5)~df$quality where PC1 represents the scores of PC1 to 5 and df$quality represents the quality groups. 
+
+#eg: (p_PC1_1sided <- LTPC1[[3]][1]/2 : extracts the p-value from the result of the Levene's test for PC1 and divides it by 2 to get a one-sided p-value. 
+
+(LTPC1 <- leveneTest(PC1~social_media_subset_encoded1$Morning_tireness,data=dftyp_pca))
+(p_PC1_1sided <- LTPC1[[3]][1]/2)
+(LTPC2 <- leveneTest(PC2~social_media_subset_encoded1$Morning_tireness,data=dftyp_pca))
+(p_PC2_1sided=LTPC2[[3]][1]/2)
+(LTPC3 <- leveneTest(PC3~social_media_subset_encoded1$Morning_tireness,data=dftyp_pca))
+(p_PC3_1sided <- LTPC3[[3]][1]/2)
+(LTPC4 <- leveneTest(PC4~social_media_subset_encoded1$Morning_tireness,data=dftyp_pca))
+(p_PC4_1sided <- LTPC4[[3]][1]/2)
+(LTPC5 <- leveneTest(PC5~social_media_subset_encoded1$Morning_tireness,data=dftyp_pca))
+(p_PC5_1sided <- LTPC5[[3]][1]/2)
+```
+
+```{R}
+
+plot(log(eigen_df), xlab = "Component number",ylab = "log(Component variance)", type="l",main = "Log(eigenvalue) diagram")
+print(summary(df_pca))
+plot(df_pca, xlab = "Principal Component")
+
+```
+
+PCA Analysis for Bar Plot: Inference and Insights
+
+Instagram_Time seems to have a strong positive correlation with the first dimension (Dim 1).
+
+Linkedin_Time, Snapchat_Time, and Twitter_Time also appear to have a strong positive correlation with Dim 1, although slightly less strong than Instagram_Time.
+
+Whatsapp_Time and Youtube_Time show moderate positive correlations with Dim 1.
+
+OTT_Time and Reddit_Time have weaker positive correlations with Dim 1.
+
+The "Application Type" variables show various degrees of correlation with Dim 1, with 'Learning' and 'Netflix' types showing some degree of positive correlation, though less than the time spent on specific social media platforms.
+
+There is very little correlation between any types of application use and Dim 5.
+
+
+There appears to be a difference in the scores of the first and second principal components between individuals who do and do not experience morning tiredness, potentially indicating that these components capture variance in the data related to this experience.
+
+
+For PC3 and PC4, the similarity in distributions suggests that these components may not be as strongly related to the experience of morning tiredness.
+
+
+The presence of outliers in the "Yes" group for PC1 and PC2 could indicate that there are other factors or patterns captured by these components that are more pronounced in individuals who experience morning tiredness.
+
+
+It's important to note that without more context on what each principal component represents (i.e., which original variables contribute most to each component), these inferences remain speculative. Principal component scores are the transformed values of the original data in the direction of maximum variance, and without knowing what these directions represent in terms of original variables, it's challenging to draw definitive conclusions.
+
+```{r}
+#The aboved two gives us the same thing. predict is a good function to know.
+social_media_subset_encoded1$Morning_tireness <- as.factor(social_media_subset_encoded1$Morning_tireness)
+out <- sapply(1:5, function(i){plot(social_media_subset_encoded1$Morning_tireness,df_pca$x[,i],xlab=paste("PC",i,sep=""),ylab="Morning_tireness")})
+pairs(df_pca$x[,1:5], ylim = c(-6,4),xlim = c(-6,4),panel=function(x,y,...){text(x,y,social_media_subset_encoded1$Morning_tireness)})
+```
+************4) Model Insights  (10 points)******************
+
+Given the elbow at the second or third component, you might consider retaining only the first two or three principal components for further analysis, as they capture the majority of information in the data.
+
+
+The subsequent components each add a relatively small amount to the total explained variance, and after the third component, the marginal gain continues to decrease, which suggests that they may not add significant value to the analysis.
+
+
+This scree plot helps in dimensionality reduction decisions. Instead of working with all ten dimensions, one can achieve a simplified representation with just a few components without losing a substantial amount of information.
+
+```{r}
+library(factoextra)
+fviz_eig(df_pca, addlabels = TRUE)
+```
+```{R}
+library(factoextra)
+
+# Plot variables' contributions to both PC2 and PC3
+plot_pc2_pc3 <- fviz_pca_var(df_pca, axes = c(1, 2), col.var = "cos2",
+                              gradient.cols = c("#FFCC00", "#CC9933", "#660033", "#330033"),
+                              repel = TRUE) +
+  ggtitle("PC2 and PC3 - Variance Contributions")
+
+# Display the plot
+plot_pc2_pc3
+
+```
+```{R}
+library(FactoMineR)
+library(corrplot)
+# Different PCA Method. 
+res.pca <- PCA(social_media_subset_encoded1[, 1:14], graph = FALSE)
+print(res.pca)
+
+# Compute the cos2 values from the PCA results
+cos2_matrix <- res.pca$var$cos2
+
+# Plot the correlation matrix using corrplot
+corrplot(cos2_matrix, is.corr = FALSE)
+
+fviz_pca_var(res.pca, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             repel = TRUE,
+             axes = c(1, 2) # Specify PC3 and PC4
+             )
+```
+```{R}
+
+fviz_pca_ind(res.pca,
+             geom.ind = "point", # show points only (not "text")
+             col.ind = social_media_subset_encoded1$Morning_tireness, # color by groups
+             palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+             addEllipses = TRUE, # Concentration ellipses
+             axes = c(1, 2), # PC2 and PC3
+             legend.title = "Groups"
+             )
+
+fviz_pca_biplot(res.pca, 
+                # Individuals
+                geom.ind = "point",
+                fill.ind = social_media_subset_encoded1$Morning_tireness, col.ind = "black",
+                pointshape = 21, pointsize = 2,
+                palette = "jco",
+                addEllipses = TRUE,
+                # Variables
+                alpha.var = "contrib", col.var = "contrib",
+                gradient.cols = "RdYlBu",
+                axes = c(1, 2),  # PC2 and PC3
+                legend.title = list(fill = "Quality", color = "Contrib")
+                )
+
+```
+
+```{R}
+# Find columns with "_Time"
+time_columns <- grep("_Time$", names(social_media_cleaned), value = TRUE)
+time_columns
+
+# Define additional columns to keep
+additional_columns <- c("Weekly_Feelings", "Application Type")
+
+# Combine time columns and additional columns to keep
+columns_to_keep <- c(time_columns, additional_columns)
+
+# Select columns to keep from the dataframe
+social_media_subset <- social_media_cleaned[columns_to_keep]
+social_media_subset
+```
+```{R}
+# Load the caret package
+library(caret)
+
+# Specify the column names for one-hot encoding, excluding Morning_tireness
+columns <- setdiff(names(social_media_subset), "Morning_tireness")
+
+# Create a formula for one-hot encoding excluding Morning_tireness
+formula_str <- paste("Weekly_Feelings ~ .", collapse = " + ")
+
+# Convert the formula string to a formula object
+formula <- as.formula(formula_str)
+
+# Create dummy variables
+dummy <- dummyVars(formula, data = social_media_subset)
+
+# Apply one-hot encoding
+social_media_subset_encoded <- predict(dummy, newdata = social_media_subset)
+
+# Convert the result to a data frame
+social_media_subset_encoded <- as.data.frame(social_media_subset_encoded)
+
+# Convert Morning_tireness back to a categorical variable
+social_media_subset_encoded$Weekly_Feelings <- as.factor(social_media_subset$Weekly_Feelings)
+
+
+social_media_subset_encoded1 <- social_media_subset_encoded
+```
+```{R}
+selected_cols <- social_media_subset_encoded1
+
+# Convert 'quality' to factor if it's not already
+selected_cols$Weekly_Feelings <- as.factor(selected_cols$Weekly_Feelings)
+
+# Perform aggregation
+grouped_avg <- aggregate(. ~ Weekly_Feelings, data = selected_cols[, -1], FUN = mean)
+
+# Print the grouped averages
+print(grouped_avg)
+```
+
+```{r}
+library(cluster)
+
+# Set the first column as row names
+row.names(grouped_avg) <- grouped_avg[, 1]  # Assuming the first column contains row names
+
+# Remove the first column from the dataframe
+grouped_avg <- grouped_avg[, -1]
+
+# View the dataframe
+grouped_avg
+
+grouped_avg1 <- grouped_avg[, c("Linkedin_Time", "Twitter_Time", "OTT_Time")]
+
+# Print the modified grouped_avg data frame
+print(grouped_avg1)
+
+```
+```{R}
+
+```
+```{r}
+matstd.can <- scale(grouped_avg1)
+matstd.can
+```
+```{R}
+# Creating a (Euclidean) distance matrix of the standardized data 
+dist.wine <- dist(matstd.can, method="euclidean")
+dist.wine
+```
+```{R}
+# Invoking hclust command (cluster analysis by single linkage method)      
+cluswine.nn <- hclust(dist.wine, method = "single")
+
+# Plotting vertical dendrogram      
+# create extra margin room in the dendrogram, on the bottom (Canine species' labels)
+#par(mar=c(6, 4, 4, 2) + 0.1)
+plot(as.dendrogram(cluswine.nn),ylab="Distance between wine quality",ylim=c(0,2.5),main="Dendrogram of 12 qualities of wine")
+```
+
+```{r}
+matstd.can
+matstd.new <- scale(matstd.can[,1:3])
+matstd.new
+```
+```{r}
+# Creating a (Euclidean) distance matrix of the standardized data
+dist.employ <- dist(matstd.new, method="euclidean")
+# Invoking hclust command (cluster analysis by single linkage method)
+clusemploy.nn <- hclust(dist.employ, method = "single")
+
+plot(as.dendrogram(clusemploy.nn),ylab="Distance between Quality wine",ylim=c(0,6),
+     main="Dendrogram. Quality of wine and hierarchy")
+
+plot(as.dendrogram(clusemploy.nn), xlab= "Distance between quality wine", xlim=c(6,0),
+     horiz = TRUE,main="Dendrogram. Quality of wine and hierarchy vertical")
+```
+
+```{r}
+library(factoextra)
+# Perform hierarchical clustering
+res.hc <- hclust(dist(matstd.can))
+agn.employ <- agnes(matstd.can, metric="euclidean", stand=TRUE, method = "single")
+
+#  Description of cluster merging
+agn.employ$merge
+
+#Dendogram
+plot(as.dendrogram(agn.employ), xlab= "Distance between Wine",xlim=c(8,0),
+     horiz = TRUE,main="Dendrogram \n Wine Quality hierarchy")
+
+
+#Interactive Plots
+#plot(agn.employ,ask=TRUE)
+plot(agn.employ, which.plots=1)
+plot(agn.employ, which.plots=2)
+plot(agn.employ, which.plots=3)
+
+# Load required libraries
+library(factoextra)
+
+# Visualize the optimal number of clusters using the gap statistic
+fviz_nbclust(matstd.can, kmeans, method = "gap_stat", k.max = 2)
+
+set.seed(123)
+km.res <- kmeans(matstd.can, 2, nstart = 25)
+# Visualize
+fviz_cluster(km.res, data = matstd.can,
+             ellipse.type = "convex",
+             palette = "jco",
+             ggtheme = theme_minimal())
+
+
+fviz_dend(res.hc, k = 4, # Cut in four groups
+          cex = 0.5, # label size
+          k_colors = c("#2E9FDF", "#00AFBB", "#E7B800", "#FC4E07"),
+          color_labels_by_k = TRUE, # color labels by groups
+          rect = TRUE # Add rectangle around groups
+          )
+```
+
+```{R}
+selected_cols <- social_media_subset_encoded1
+
+# Convert 'quality' to factor if it's not already
+selected_cols$Weekly_Feelings <- as.factor(selected_cols$Weekly_Feelings)
+
+# Perform aggregation
+grouped_avg <- aggregate(. ~ Morning_tireness, data = selected_cols[, -1], FUN = mean)
+# Print the grouped averages
+print(grouped_avg)
+grouped_avg2 <- grouped_avg[, !grepl("`Application Type`OTT", names(grouped_avg))]
+grouped_avg2
+```
+
+
+```{r}
+
+# Load the psych package
+library(psych)
+
+```
+```{R}
+# Find columns with "_Time"
+time_columns <- grep("_Time$", names(social_media_cleaned), value = TRUE)
+time_columns
+
+# Define additional columns to keep
+additional_columns <- c("Morning_tireness", "Application Type")
+
+# Combine time columns and additional columns to keep
+columns_to_keep <- c(time_columns, additional_columns)
+
+# Select columns to keep from the dataframe
+social_media_subset <- social_media_cleaned[columns_to_keep]
+
+
+# Remove the column "Application Type"
+social_media_subset2 <- social_media_subset[, !grepl("^Application Type$", colnames(social_media_subset))]
+
+# Check the updated data frame
+head(social_media_subset)
+
+social_media_subset2
+
+
+
+```
+
+```{r}
+# Group by column 6 and calculate the average of all other columns within each group
+grouped_avg <- aggregate(. ~ Morning_tireness, data = social_media_subset2[, -6], FUN = mean)
+
+# Print the grouped averages
+print(grouped_avg)
+
+
+```
+
+
+```{R}
+# Set the first column as row names
+row.names(grouped_avg) <- grouped_avg[, 1]  # Assuming the first column contains row names
+
+# Remove the first column from the dataframe
+grouped_avg <- grouped_avg[, -1]
+
+# View the dataframe
+grouped_avg
+```
+```{r}
+
+
+grouped_avg
+fit.pc <- principal(grouped_avg[-1], nfactors=3, rotate="varimax")
+fit.pc
+
+round(fit.pc$values, 3)
+```
+```{R}
+print(fit.pc$loadings)
+# Communalities
+fit.pc$communality
+# Rotated factor scores, Notice the columns ordering: RC1, RC3, RC2 and RC4
+fit.pc$scores
+```
+```{r}
+# Play with FA utilities
+fa.plot(fit.pc) # See Correlations within Factors
+fa.diagram(fit.pc) # Visualize the relationship
+fa.parallel(grouped_avg[-1]) # See factor recommendation
+plot(fit.pc$values, type="b", main="Scree Plot")
+
+```
+
+
+```{R}
+# Find columns with "_Time"
+time_columns <- grep("_Time$", names(social_media_cleaned), value = TRUE)
+time_columns
+
+# Define additional columns to keep
+additional_columns <- c("Morning_tireness", "Application Type")
+
+# Combine time columns and additional columns to keep
+columns_to_keep <- c(time_columns, additional_columns)
+
+# Select columns to keep from the dataframe
+social_media_subset <- social_media_cleaned[columns_to_keep]
+```
+```{R}
+social_media_subset
+```
+```{R}
+# Load the caret package
+library(caret)
+
+# Specify the column names for one-hot encoding, excluding Morning_tireness
+columns <- setdiff(names(social_media_subset), "Morning_tireness")
+
+# Create a formula for one-hot encoding excluding Morning_tireness
+formula_str <- paste("Morning_tireness ~ .", collapse = " + ")
+
+# Convert the formula string to a formula object
+formula <- as.formula(formula_str)
+
+# Create dummy variables
+dummy <- dummyVars(formula, data = social_media_subset)
+
+# Apply one-hot encoding
+social_media_subset_encoded <- predict(dummy, newdata = social_media_subset)
+
+# Convert the result to a data frame
+social_media_subset_encoded <- as.data.frame(social_media_subset_encoded)
+
+# Convert Morning_tireness back to a categorical variable
+social_media_subset_encoded$Morning_tireness <- as.factor(social_media_subset$Morning_tireness)
+
+
+social_media_subset_encoded
+```    
+```{r}
+colnames(social_media_subset_encoded)
+```
+```{R}
+## Exploratory Analysis
+attach(social_media_subset_encoded)
+xtabs(~ Morning_tireness + `\`Application Type\`Social media`, data = social_media_subset_encoded)
+
+xtabs(~ Morning_tireness + `\`Application Type\`Learning`, data = social_media_subset_encoded)
+
+
+xtabs(~ Morning_tireness + `\`Application Type\`No Social Media`, data = social_media_subset_encoded)
+
+xtabs(~ Morning_tireness + Instagram_Time, data=social_media_subset_encoded)
+xtabs(~ Morning_tireness + Linkedin_Time, data=social_media_subset_encoded)
+xtabs(~ Morning_tireness + Snapchat_Time, data=social_media_subset_encoded)
+xtabs(~ Morning_tireness + Whatsapp_Time, data=social_media_subset_encoded)
+xtabs(~ Morning_tireness + OTT_Time, data=social_media_subset_encoded)
+xtabs(~ Morning_tireness + Reddit_Time, data=social_media_subset_encoded)
+xtabs(~ Morning_tireness + Youtube_Time, data=social_media_subset_encoded)
+```
+
+1) Model Development (2 points)
+
+
+
+To assess the model development, we typically look at several key aspects:
+
+Significance of coefficients: We examine the estimates, standard errors, z-values, and p-values of the coefficients to determine if they are statistically significant. In your output, the intercept and some coefficients like OTT_Time and Snapchat_Time have p-values greater than 0.05, suggesting they may not be statistically significant predictors.
+
+
+Model fit: We evaluate the model fit using deviance statistics (Null and Residual deviance) and AIC (Akaike Information Criterion). Lower values of AIC indicate better model fit. In your output, the residual deviance is lower than the null deviance, indicating that the model explains some of the variance in the data. However, the AIC is relatively high, suggesting that the model may not fit the data well.
+
+
+Fisher Scoring iterations: The number of iterations performed during the optimization process. Higher numbers may indicate convergence issues.
+
+
+Interpretation of coefficients: We interpret the coefficients in relation to the response variable. For example, a positive coefficient for Whatsapp_Time suggests that as the time spent on WhatsApp increases, the odds of morning tiredness also increase.
+
+
+Based on this information, we can conclude that the model may have some limitations in terms of statistical significance and model fit. Further investigation and possibly model refinement may be necessary.
+```{r}
+social_media_subset_encoded
+social_media_subset_encoded$Morning_tireness
+logistic_simple <- glm(Morning_tireness  ~ Whatsapp_Time + Reddit_Time + OTT_Time + Snapchat_Time + `\`Application Type\`No Social Media`, data=social_media_subset_encoded, family="binomial")
+summary(logistic_simple)
+```
+2) Model Acceptance (2 points)
+
+Based on the predicted probabilities of morning tiredness from the logistic regression model, we can make some inferences about the likelihood of experiencing morning tiredness for each observation in the dataset.
+
+Here's how we can interpret the predicted probabilities:
+
+Interpretation of probabilities: The predicted probabilities represent the likelihood (ranging from 0 to 1) of an individual experiencing morning tiredness based on the predictor variables in the model.
+
+
+Threshold for classification: Typically, we use a threshold probability (e.g., 0.5) to classify observations into binary outcomes (e.g., presence or absence of morning tiredness). For example, if the predicted probability is greater than or equal to 0.5, we might classify the observation as experiencing morning tiredness.
+
+
+Example inference: Let's take the first observation as an example. The predicted probability of morning tiredness is approximately 0.0395. Since this probability is below the threshold (e.g., 0.5), we might infer that this individual is less likely to experience morning tiredness based on the predictor variables in the model.
+
+
+Consideration of other factors: It's important to note that the predicted probabilities are based on the predictor variables included in the model. Other factors not included in the model may also influence morning tiredness but are not accounted for in these predictions.
+
+```{R}
+predicted.data <- data.frame(probability.of.Morning_tireness=logistic_simple$fitted.values,Morning_tireness=social_media_subset_encoded$Morning_tireness)
+
+
+options(scipen = 999)
+predicted.data
+```
+
+3) Residual Analysis (2 points)
+
+
+Coefficients: The coefficients represent the estimated effect of each predictor variable on the log odds of experiencing morning tiredness.
+
+For example:
+Positive coefficients (e.g., Instagram_Time, Linkedin_Time) indicate that an increase in the corresponding predictor variable is associated with higher odds of morning tiredness.
+
+
+Negative coefficients (e.g., Twitter_Time, Whatsapp_Time) indicate that an increase in the corresponding predictor variable is associated with lower odds of morning tiredness.
+
+
+Standard Errors and z-values: These are used to assess the significance of the coefficients. Typically, we look for small standard errors and z-values greater than 1.96 (for a significance level of 0.05) to indicate statistical significance. 
+
+However, in this case, all z-values are 0, and the standard errors are extremely large, indicating issues with the model estimation.
+Null and Residual Deviance: These deviance statistics are used to assess the goodness of fit of the model. The null deviance represents the deviance of the null model (i.e., a model with no predictors), while the residual deviance represents the deviance of the fitted model. A decrease in deviance indicates a better fit.
+
+In this case, the residual deviance is extremely close to zero, suggesting that the model fits the data perfectly, which is highly unlikely and may indicate overfitting or other issues.
+
+
+AIC (Akaike Information Criterion): AIC is a measure of the relative quality of a statistical model. Lower AIC values indicate better-fitting models. Here, the AIC is relatively high, which contradicts the extremely low residual deviance and suggests potential problems with the model.
+
+
+Number of Fisher Scoring iterations: The number of iterations performed during the optimization process. Higher numbers may indicate convergence issues.
+
+```{R}
+
+
+xtabs(~ probability.of.Morning_tireness +  Whatsapp_Time + OTT_Time + Snapchat_Time + Instagram_Time, data=predicted.data)
+logistic <- glm(Morning_tireness ~ ., data=social_media_subset_encoded, family="binomial")
+summary(logistic)
+
+```
+
+
+```{R}
+
+## Now calculate the overall "Pseudo R-squared" and its p-value
+ll.null <- logistic$null.deviance/-2
+ll.proposed <- logistic$deviance/-2
+(ll.null - ll.proposed) / ll.null
+```
+```{R}
+## The p-value for the R^2
+1 - pchisq(2*(ll.proposed - ll.null), df=(length(logistic$coefficients)-1))
+predicted.data$Morning_tireness <- data.frame(probability.of.Morning_tireness=logistic$fitted.values,Morning_tireness=social_media_subset_encoded$Morning_tireness)
+```
+
+4) Prediction (2 points)
+
+
+```{r}
+predicted.data <- predicted.data[order(predicted.data$probability.of.Morning_tireness, decreasing=FALSE),]
+predicted.data$rank <- 1:nrow(predicted.data)
+```
+
+
+4) Prediction (2 points)
+Prediction Results (pdata):
+The pdata vector contains the predicted probabilities of having sleep issues (morning tiredness) for each observation in the dataset. These probabilities range from very low (close to 0) to very high (close to 1).
+
+
+Actual Values of Morning Tiredness (social_media_subset_encoded$Morning_tireness):
+The social_media_subset_encoded$Morning_tireness vector contains the actual values of morning tiredness for each observation, categorized as "No" or "Yes".
+
+
+Inferences:
+By comparing the predicted probabilities (pdata) with the actual values of morning tiredness, we can assess the model's performance in predicting sleep issues.
+
+
+Observations with high predicted probabilities (close to 1) are likely to be classified as "Yes" (having morning tiredness), while those with low predicted probabilities (close to 0) are likely to be classified as "No" (not having morning tiredness).
+
+
+We can visualize the relationship between the predicted probabilities and the actual values using a plot. In the provided ggplot code, the geom_point function is used to create a scatter plot where the x-axis represents the index of observations, the y-axis represents the predicted probabilities of having sleep issues, and the color of points represents the actual values of morning tiredness.
+
+
+Interpretation:
+Points with a high predicted probability and actual value "Yes" (morning tiredness) indicate successful predictions.
+Points with a high predicted probability but actual value "No" suggest false positives (misclassifications).
+
+
+Points with a low predicted probability and actual value "Yes" suggest false negatives (misclassifications).
+
+
+The overall performance of the model can be evaluated based on the distribution and alignment of points in the plot.
+```{r}
+
+ggplot(data=predicted.data, aes(x=rank, y=probability.of.Morning_tireness)) +
+geom_point(aes(color=social_media_subset_encoded$Morning_tireness), alpha=1, shape=4, stroke=2) +
+xlab("Index") +
+ylab("Predicted probability of having sleep issues")
+
+# From Caret
+pdata <- predict(logistic,newdata=social_media_subset_encoded,type="response" )
+pdata
+social_media_subset_encoded$Morning_tireness
+```
+```{R}
+# Install and load the caret package
+
+library(caret)
+library(pROC)
+
+pdataF <- as.factor(ifelse(test=as.numeric(pdata>0.5) == 0, yes="Yes", no="No"))
+
+#From e1071::
+confusionMatrix(pdataF, social_media_subset_encoded$Morning_tireness)
+# From pROC
+roc(social_media_subset_encoded$Morning_tireness,logistic$fitted.values,plot=TRUE)
+par(pty = "s")
+roc(social_media_subset_encoded$Morning_tireness,logistic$fitted.values,plot=TRUE)
+```
+```{R}
+## NOTE: By default, roc() uses specificity on the x-axis and the values range
+## from 1 to 0. This makes the graph look like what we would expect, but the
+## x-axis itself might induce a headache. To use 1-specificity (i.e. the
+## False Positive Rate) on the x-axis, set "legacy.axes" to TRUE.
+roc(social_media_subset_encoded$Morning_tireness,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE)
+roc(social_media_subset_encoded$Morning_tireness,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage")
+```
+
+```{r}
+roc(social_media_subset_encoded$Morning_tireness,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4)
+roc(social_media_subset_encoded$Morning_tireness,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4)
+```
+```{R}
+## If we want to find out the optimal threshold we can store the
+## data used to make the ROC graph in a variable...
+roc.info <- roc(social_media_subset_encoded$Morning_tireness, logistic$fitted.values, legacy.axes=TRUE)
+str(roc.info)
+## tpp = true positive percentage
+## fpp = false positive precentage
+roc.df <- data.frame(tpp=roc.info$sensitivities*100, fpp=(1 - roc.info$specificities)*100,thresholds=roc.info$thresholds)
+roc.df
+head(roc.df) 
+```
+Inferences:
+As the threshold decreases from Inf to 0.000000000012405353, the true positive percentage (tpp) tends to decrease, while the false positive percentage (fpp) tends to increase.
+
+
+Lowering the threshold allows the model to classify more observations as positive, leading to an increase in true positives (tpp). However, this also increases the likelihood of incorrectly classifying negative cases as positive, resulting in higher false positives (fpp).
+
+
+The optimal threshold depends on the specific context and the trade-off between true positives and false positives that the model can tolerate.
+
+```{R}
+## head() will show us the values for the upper right-hand corner of the ROC graph, when the threshold is so low
+## (negative infinity) that every single sample is called "obese".
+## Thus TPP = 100% and FPP = 100%
+tail(roc.df) 
+```
+```{R}
+## tail() will show us the values for the lower left-hand corner
+## of the ROC graph, when the threshold is so high (infinity)
+## that every single sample is called "not obese".
+## Thus, TPP = 0% and FPP = 0%
+## now let's look at the thresholds between TPP 60% and 80%
+roc.df[roc.df$tpp > 60 & roc.df$tpp < 80,]
+roc(social_media_subset_encoded$Morning_tireness,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4, percent=TRUE)
+```
+
+
+```{r}
+roc(social_media_subset_encoded$Morning_tireness,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4, percent=TRUE, print.auc=TRUE)
+
+```
+
+```{R}
+roc(social_media_subset_encoded$Morning_tireness,logistic$fitted.values,plot=TRUE, legacy.axes=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4, percent=TRUE, print.auc=TRUE, partial.auc=c(100, 90), auc.polygon = TRUE, auc.polygon.col = "#377eb822", print.auc.x=45)
+
+```
+
+
+5) Model Accuracy (2 points)
+
+
+Inference:
+Based on the ROC curve and AUC value, we can infer that the logistic regression model (logistic_simple) has good discriminative ability in predicting morning tiredness.
+
+
+An AUC value of 86.73% indicates that the model performs well above chance (random guessing), suggesting that it effectively separates individuals with morning tiredness from those without.
+
+
+The ROC curve's position relative to the diagonal (chance line) further confirms the model's performance compared to random guessing.
+
+
+```{r}
+# Lets do two roc plots to understand which model is better
+roc(social_media_subset_encoded$Morning_tireness, logistic_simple$fitted.values, plot=TRUE, legacy.axes=TRUE, percent=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4, print.auc=TRUE)
+
+# Lets add the other graph
+plot.roc(social_media_subset_encoded$Morning_tireness, logistic$fitted.values, percent=TRUE, col="#4daf4a", lwd=4, print.auc=TRUE, add=TRUE, print.auc.y=40)
+legend("bottomright", legend=c("Simple", "Non Simple"), col=c("#377eb8", "#4daf4a"), lwd=4) 
+
+```
+
+
+```{R}
+# Loop through each column in time_columns
+social_media_cleaned[time_columns] <- lapply(social_media_cleaned[time_columns], function(x) {
+  # Calculate mean of the column excluding NA values
+  mean_value <- mean(x, na.rm = TRUE)
+  # Replace NA values with the mean
+  x[is.na(x)] <- mean_value
+  return(x)
+})
+
+# Print the updated data frame
+print(social_media_cleaned)
+```
+
+
+
+```{R}
+# Find columns with "_Time"
+time_columns <- grep("_Time$", names(social_media_cleaned), value = TRUE)
+time_columns
+
+# Define additional columns to keep
+additional_columns <- c("Morning_tireness", "Application Type")
+
+# Combine time columns and additional columns to keep
+columns_to_keep <- c(time_columns, additional_columns)
+
+# Select columns to keep from the dataframe
+social_media_subset <- social_media_cleaned[columns_to_keep]
+```
+```{R}
+social_media_subset
+```
+```{R}
+# Load the caret package
+library(caret)
+
+# Specify the column names for one-hot encoding, excluding Morning_tireness
+columns <- setdiff(names(social_media_subset), "Morning_tireness")
+
+# Create a formula for one-hot encoding excluding Morning_tireness
+formula_str <- paste("Morning_tireness ~ .", collapse = " + ")
+
+# Convert the formula string to a formula object
+formula <- as.formula(formula_str)
+
+# Create dummy variables
+dummy <- dummyVars(formula, data = social_media_subset)
+
+# Apply one-hot encoding
+social_media_subset_encoded <- predict(dummy, newdata = social_media_subset)
+
+# Convert the result to a data frame
+social_media_subset_encoded <- as.data.frame(social_media_subset_encoded)
+
+# Convert Morning_tireness back to a categorical variable
+social_media_subset_encoded$Morning_tireness <- as.factor(social_media_subset$Morning_tireness)
+
+
+social_media_subset_encoded1 <- social_media_subset_encoded
+```
+
+
+
+```{r}
+head(social_media_subset_encoded)
+```
+
+```{r}
+social_media_subset_encoded1$Morning_tireness <- as.numeric(as.factor(social_media_subset_encoded1$Morning_tireness)) - 1
+social_media_subset_encoded1
+```
+```{r}
+smp_size_raw <- floor(0.75 * nrow(social_media_subset_encoded1))
+smp_size_raw
+```
+```{R}
+train_ind_raw <- sample(nrow(social_media_subset_encoded1), size = smp_size_raw)
+
+train_ind_raw
+train_raw.df <- as.data.frame(social_media_subset_encoded1[train_ind_raw, ])
+train_raw.df
+
+test_raw.df <- as.data.frame(social_media_subset_encoded1[-train_ind_raw, ])
+test_raw.df
+
+
+
+```
+```{r}
+
+train_raw.df <- as.data.frame(social_media_subset_encoded1[train_ind_raw, ])
+train_raw.df
+# Assuming 'train_raw.df' is your data frame and '10' is the index of the constant variable
+
+```
+
+
+1) Model Development (2 points)
+Prior probabilities of groups:
+The prior probability of group 0 (0.6) is higher than group 1 (0.4), indicating that there are more observations in group 0 than in group 1.
+
+
+Group means:
+Group 0 tends to have higher values for Instagram_Time, Linkedin_Time, Snapchat_Time, Twitter_Time, and Whatsapp_Time compared to group 1.
+
+
+
+Group 1 tends to have lower values for Instagram_Time, Linkedin_Time, Snapchat_Time, Twitter_Time, and Whatsapp_Time compared to group 0.
+
+
+Group 0 has higher values for Youtube_Time, OTT_Time, and Reddit_Time compared to group 1.
+
+
+Group 1 has lower values for Youtube_Time, OTT_Time, and Reddit_Time compared to group 0.
+
+
+Coefficients of linear discriminants:
+
+The coefficients of the linear discriminants (LD1) indicate the importance of each predictor variable in distinguishing between the two groups.
+
+
+Variables with larger absolute coefficients have a greater influence on the classification.
+
+
+For example, Reddit_Time has a large positive coefficient, indicating that it strongly contributes to the separation between the two groups.
+
+
+Based on these results, we can infer that certain social media usage patterns and application types are associated with different levels of morning tiredness. Further analysis and interpretation may be needed to understand the specific relationships between these variables and morning tiredness.
+
+
+
+```{r}
+df.lda <- lda(formula = train_raw.df$Morning_tireness ~ ., data = train_raw.df)
+df.lda
+
+```
+
+2) Model Acceptance (2 points)
+
+Prior probabilities of groups:
+Group 0 has a prior probability of 0.6, while Group 1 has a prior probability of 0.4. This indicates that there are more observations in Group 0 than in Group 1.
+
+
+Group means:
+
+
+Group 0 tends to have higher values for Instagram_Time, Linkedin_Time, Snapchat_Time, Twitter_Time, and Whatsapp_Time compared to Group 1.
+
+
+Group 1 tends to have lower values for Instagram_Time, Linkedin_Time, Snapchat_Time, Twitter_Time, and Whatsapp_Time compared to Group 0.
+
+
+Group 0 has higher values for Youtube_Time, OTT_Time, and Reddit_Time compared to Group 1.
+
+
+Group 1 has lower values for Youtube_Time, OTT_Time, and Reddit_Time compared to Group 0.
+
+
+Coefficients of linear discriminants:
+
+
+The coefficients of the linear discriminants (LD1) indicate the importance of each predictor variable in distinguishing between the two groups.
+
+
+Variables with larger absolute coefficients have a greater influence on the classification.
+
+
+For example, Reddit_Time has a large positive coefficient, indicating that it strongly contributes to the separation between the two groups.
+
+
+Based on these results, we can infer that certain social media usage patterns and application types are associated with different levels of morning tireness. Further analysis and interpretation may be needed to understand the specific relationships between these variables and morning tireness.
+
+
+```{r}
+train_raw.df$Morning_tireness
+summary(df.lda)
+print(df.lda)
+par(mar = c(5, 5, 2, 2))  # Set margin size (bottom, left, top, right)
+plot(df.lda)
+
+
+```
+
+
+
+4) Prediction (2 points)
+
+
+Predicted Classes:
+
+The predicted classes for the observations in the test dataset are as follows:
+
+Observation 3 is predicted to belong to class 1.
+Observation 4 is predicted to belong to class 1.
+Observation 6 is predicted to belong to class 0.
+Observation 9 is predicted to belong to class 1.
+Observation 16 is predicted to belong to class 1.
+Observation 20 is predicted to belong to class 0.
+
+
+LD1 Scores:
+
+The LD1 scores for the observations in the test dataset are also provided.
+
+These scores represent the linear discriminant values for each observation, which are used to classify them into the respective classes.
+
+
+Based on these predictions and LD1 scores, we can infer that the LDA model has assigned classes to each observation in the test dataset based on their social media usage patterns and application types. The LD1 scores provide additional information about the separation between the classes.
+
+Further interpretation and analysis may be required to understand the implications of these results.
+```{r}
+
+df.lda.predict <- predict(df.lda, newdata = test_raw.df)
+df.lda.predict$class
+df.lda.predict$x
+
+```
+```{R}
+# Get the posteriors as a dataframe.
+df.predict.posteriors <- as.data.frame(df.lda.predict$posterior)
+df.predict.posteriors
+pred <- prediction(df.predict.posteriors[,2], test_raw.df$Morning_tireness)
+pred
+
+colnames(df.predict.posteriors)
+str(df.predict.posteriors)
+head(df.predict.posteriors)
+```
+```{R}
+roc.perf = performance(pred, measure = "tpr", x.measure = "fpr")
+auc.train <- performance(pred, measure = "auc")
+auc.train <- auc.train@y.values
+plot(roc.perf)
+abline(a=0, b= 1)
+text(x = .25, y = .65 ,paste("AUC = ", round(auc.train[[1]],3), sep = ""))
+
+
+```
+
+
+5) Model Accuracy (2 points)
+
+A model accuracy of 0.3333 indicates that the model correctly classified approximately 33.33% of the observations in the test dataset. While this accuracy might seem low, it's essential to consider the context of your specific problem and the baseline accuracy.
+
+Inference:
+
+The accuracy of the model suggests that it may not be performing well in predicting morning tiredness based on the provided features.
+
+
+Further investigation into the features, model selection, and potential data preprocessing steps may be necessary to improve the model's performance.
+
+
+It's also essential to compare the model's accuracy with a baseline accuracy. For instance, if the classes in your dataset are imbalanced (e.g., one class is much more prevalent than the other), a naive classifier that always predicts the majority class could achieve a high accuracy but may not be useful. 
+
+In such cases, you should compare your model's accuracy against the baseline accuracy to assess its effectiveness.
+```{r}
+# Get the predicted classes from the LDA model
+predicted_classes <- df.lda.predict$class
+
+# Get the actual classes from the test dataset
+actual_classes <- test_raw.df$Morning_tireness
+
+# Calculate accuracy
+accuracy <- mean(predicted_classes == actual_classes)
+cat("Accuracy:", accuracy, "\n")
+
+# Convert factor levels to numeric values
+predicted_classes_numeric <- as.numeric(as.character(predicted_classes))
+actual_classes_numeric <- as.numeric(as.character(actual_classes))
+
+# Calculate residuals
+residuals <- actual_classes_numeric - predicted_classes_numeric
+cat("Residuals:", residuals, "\n")
+```
+3) Residual Analysis (2 points)
+
+
+Residual = -1: This means that the model predicted a class of 0 (negative class), but the actual class was 1 (positive class). 
+
+In other words, the model incorrectly classified these observations as belonging to the negative class when they actually belong to the positive class.
+
+
+Residual = 0: This means that the model predicted the correct class for that observation. The model correctly classified these observations.
+
+
+Interpretation:
+
+Observation 1: The model predicted a class of 0, but the actual class was 1. This indicates a misclassification where the model incorrectly classified an observation as belonging to the negative class when it actually belongs to the positive class.
+
+
+Observation 2: Similar to Observation 1, the model predicted a class of 0, but the actual class was 1, resulting in a misclassification.
+
+
+Observation 3: The model predicted a class of 0, and the actual class was also 0. This indicates a correct classification where the model accurately classified an observation as belonging to the negative class.
+
+
+Observation 4: Similar to Observations 1 and 2, the model incorrectly classified this observation as belonging to the negative class when it actually belongs to the positive class.
+
+
+Observation 5: The model predicted a class of 0, and the actual class was also 0, indicating a correct classification
+
+.
+Observation 6: Similar to Observations 1, 2, and 4, the model incorrectly classified this observation as belonging to the negative class when it actually belongs to the positive class.
+
+
+
+***********5) Learnings and Takeaways  (20 points)**********
+
+Learnings and Takeaways:
+
+WhatApp time, Instagram time are crucial for higher accuracy and better grouping.
+
+Data Cleaning is crucial before every type of data science application
+
+Understanding Data Complexity: The high variability and dimensions of social media data present challenges in model accuracy and predictability. This project reveals the importance of using methods like PCA to simplify the data without substantial information loss.
+
+
+Significance of EDA: The EDA phase is crucial for uncovering patterns, anomalies, or correlations that can inform model building. Visualization tools like box plots, correlation heatmaps, and scree plots provide valuable insights that guide further analysis.
+
+
+Model Selection and Evaluation: Choosing the right model is vital. Logistic regression and LDA are useful for binary outcomes. However, it's also important to tune hyperparameters and compare different models using accuracy, ROC curves, and other statistical measures.
+
+
+Impact of Social Media: The analysis highlights patterns between social media usage and factors like mood productivity and morning tiredness, suggesting potential real-life applications like developing guidelines for healthier social media habits.
+
+
+Challenges in Modeling Social Behaviors: Social behaviors and their impacts on mood and productivity are complex and may not always lend themselves to straightforward predictive modeling. This underscores the need for advanced analytics and careful interpretation.
+
+
+Importance of Data Preprocessing: Converting and cleaning data, such as handling null values, normalizing, and one-hot encoding, are critical preprocessing steps that significantly impact the performance of the models.
+
+
+Application of Advanced Statistical Techniques: Utilizing advanced statistical techniques like clustering analysis and factor analysis can provide deeper insights into the data structure and the relationships between variables.
