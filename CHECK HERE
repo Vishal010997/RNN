@@ -1,8 +1,9 @@
+# Example collate_batch function
 def collate_batch(batch):
     label_list, text_list, lengths = [], [], []
     for _label, _text in batch:
         tokenized_text = [vocab[token] for token in tokenizer(_text)]
-        if len(tokenized_text) > 0:
+        if len(tokenized_text) > 0:  # Ensure non-empty sequences
             label_list.append(label_pipeline(_label))
             processed_text = torch.tensor(tokenized_text, dtype=torch.int64)
             text_list.append(processed_text)
@@ -13,33 +14,3 @@ def collate_batch(batch):
     lengths = torch.tensor(lengths)
     padded_text_list = nn.utils.rnn.pad_sequence(text_list, batch_first=True)
     return padded_text_list, label_list, lengths
-
-
-
-
-def train(dataloader):
-    model.train()
-    total_loss = 0
-    for text_batch, label_batch, lengths in dataloader:
-        if text_batch.size(0) == 0:
-            continue
-        optimizer.zero_grad()
-        pred = model(text_batch, lengths)[:, 0]
-        loss = loss_fn(pred, label_batch)
-        loss.backward()
-        optimizer.step()
-        total_loss += loss.item() * label_batch.size(0)
-    return total_loss / len(dataloader.dataset)
-
-def evaluate(dataloader):
-    model.eval()
-    total_loss = 0
-    with torch.no_grad():
-        for text_batch, label_batch, lengths in dataloader:
-            if text_batch.size(0) == 0:
-                continue
-            pred = model(text_batch, lengths)[:, 0]
-            loss = loss_fn(pred, label_batch)
-            total_loss += loss.item() * label_batch.size(0)
-    return total_loss / len(dataloader.dataset)
-
