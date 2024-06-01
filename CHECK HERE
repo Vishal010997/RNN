@@ -1,45 +1,16 @@
-import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader
-from collections import Counter, OrderedDict
-import re
-
-# Dummy vocab and tokenizer for demonstration
-vocab = {'this': 1, 'is': 2, 'a': 3, 'sample': 4, 'text': 5, 'another': 6, 'example': 7, 'sentence': 8, 'more': 9, 'data': 10, 'for': 11, 'testing': 12}
-tokenizer = lambda x: x.lower().split()
-
-# Updated label_pipeline for real number labels
-label_pipeline = lambda x: float(x)
-
-# Example collate_batch function
 def collate_batch(batch):
     label_list, text_list, lengths = [], [], []
     for _label, _text in batch:
-        # Process label
-        label_list.append(label_pipeline(_label))
-        # Process text
-        processed_text = torch.tensor([vocab[token] for token in tokenizer(_text)], dtype=torch.int64)
-        text_list.append(processed_text)
-        lengths.append(processed_text.size(0))
-    # Convert lists to tensors
+        tokenized_text = [vocab[token] for token in tokenizer(_text)]
+        if len(tokenized_text) > 0:
+            label_list.append(label_pipeline(_label))
+            processed_text = torch.tensor(tokenized_text, dtype=torch.int64)
+            text_list.append(processed_text)
+            lengths.append(processed_text.size(0))
+    if len(text_list) == 0:
+        return torch.tensor([]), torch.tensor([]), torch.tensor([])
     label_list = torch.tensor(label_list)
     lengths = torch.tensor(lengths)
-    # Pad text sequences to have the same length
     padded_text_list = nn.utils.rnn.pad_sequence(text_list, batch_first=True)
     return padded_text_list, label_list, lengths
 
-# Example dataset with real number labels
-train_dataset = [(4.5, "This is a sample text."),
-                 (3.2, "Another example sentence."),
-                 (5.0, "More text data for testing.")]
-
-# Create DataLoader
-dataloader = DataLoader(train_dataset, batch_size=2, shuffle=False, collate_fn=collate_batch)
-
-# Fetch a batch
-text_batch, label_batch, length_batch = next(iter(dataloader))
-
-# Print the results
-print("Text batch:", text_batch)
-print("Label batch:", label_batch)
-print("Length batch:", length_batch)
