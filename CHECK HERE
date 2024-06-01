@@ -1,3 +1,17 @@
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, random_split
+from collections import Counter, OrderedDict
+import re
+from torchtext.datasets import IMDB
+
+# Dummy vocab and tokenizer for demonstration
+vocab = {'this': 1, 'is': 2, 'a': 3, 'sample': 4, 'text': 5, 'another': 6, 'example': 7, 'sentence': 8, 'more': 9, 'data': 10, 'for': 11, 'testing': 12}
+tokenizer = lambda x: x.lower().split()
+
+# Updated label_pipeline for real number labels
+label_pipeline = lambda x: float(x)
+
 # Example collate_batch function
 def collate_batch(batch):
     label_list, text_list, lengths = [], [], []
@@ -8,9 +22,118 @@ def collate_batch(batch):
             processed_text = torch.tensor(tokenized_text, dtype=torch.int64)
             text_list.append(processed_text)
             lengths.append(processed_text.size(0))
+        else:
+            print(f"Empty sequence found: {_text}")
     if len(text_list) == 0:
         return torch.tensor([]), torch.tensor([]), torch.tensor([])
     label_list = torch.tensor(label_list)
     lengths = torch.tensor(lengths)
     padded_text_list = nn.utils.rnn.pad_sequence(text_list, batch_first=True)
     return padded_text_list, label_list, lengths
+
+# Load IMDB dataset
+train_dataset = IMDB(split='train')
+test_dataset = IMDB(split='test')
+
+# Split train dataset into training and validation datasets
+torch.manual_seed(1)
+train_dataset, valid_dataset = random_split(list(train_dataset), [20000, 5000])
+
+# Validate the dataset
+for idx, (label, text) in enumerate(train_dataset):
+    tokens = tokenizer(text)
+    if len(tokens) == 0:
+        print(f"Empty sequence found at index {idx}: {text}")
+
+# Create DataLoader
+batch_size = 32
+train_dl = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_batch)
+valid_dl = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_batch)
+test_dl = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_batch)
+
+embedding = nn.Embedding(num_embeddings=10, embedding_dim=3, padding_idx=0)
+# word2vec
+# a batch of 2 samples of 4 indices each
+text_encoded_input = torch.LongTensor([[1,2,4,5],[4,3,2,0]])
+print(embedding(text_encoded_input))
+
+# Fully connected neural network with one hidden layer
+class RNN(nn.Module):
+    def __init__(self, vocab_size, embed_dim, rnn_hidden_size, fc_hidden_size):
+        super().__init__()
+        self.embedding = nn.Embedding(vocab_size, embed_dim, padding_idx=0)
+        self.rnn = nn.LSTM(embed_dim, rnn_hidden_size, batch_first=True)
+        self.fc1 = nn.Linear(rnn_hidden_size, fc_hidden_size)
+        self.relu = nn.ReLU()
+        self.fc2 = nn.Linear(fc_hidden_size, 1)
+
+    def forward(self, text, lengths):
+        out = self.embedding(text)
+        out = nn.utils.rnn.pack_padded_sequence(out, lengths.cpu().numpy(), enforce_sorted=False, batch_first=True)
+        out, (hidden, cell) = self.rnn(out)
+        out = hidden[-1, :, :]
+        out = self.fc1(out)
+        out = self.relu(out)
+        out = self.fc2(out)
+        return out
+
+vocab_size = len(vocab)
+embed_dim = 20
+rnn_hidden_size = 64
+fc_hidden_size = 64
+
+device = 'cpu'
+torch.manual_seed(1)
+model = RNN(vocab_size, embed_dim, rnn_hidden_size, fc_hidden_size)
+model = model.to(device)
+
+def train(dataloader):
+    model.train()
+    total_loss = 0
+    count = 0
+    for text_batch, label_batch, lengths in dataloader:
+        if text_batch.size(0) == 0:
+            print("Empty batch encountered during training.")
+            continue
+        optimizer.zero_grad()
+        pred = model(text_batch, lengths)[:, 0]
+        loss = loss_fn(pred, label_batch)
+        loss.backward()
+        optimizer.step()
+        total_loss += loss.item() * label_batch.size(0)
+        count += label_batch.size(0)
+    if count == 0:
+        return None
+    return total_loss / count
+
+def evaluate(dataloader):
+    model.eval()
+    total_loss = 0
+    count = 0
+    with torch.no_grad():
+        for text_batch, label_batch, lengths in dataloader:
+            if text_batch.size(0) == 0:
+                print("Empty batch encountered during evaluation.")
+                continue
+            pred = model(text_batch, lengths)[:, 0]
+            loss = loss_fn(pred, label_batch)
+            total_loss += loss.item() * label_batch.size(0)
+            count += label_batch.size(0)
+    if count == 0:
+        return None
+    return total_loss / count
+
+loss_fn = nn.MSELoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+
+num_epochs = 10
+
+torch.manual_seed(1)
+
+for epoch in range(num_epochs):
+    loss_train = train(train_dl)
+    loss_valid = evaluate(valid_dl)
+    if loss_train is None or loss_valid is None:
+        print(f'Epoch {epoch}: No valid batches available.')
+    else:
+        print(f'Epoch {epoch} training loss: {loss_train:.4f} validation loss: {loss_valid:.4f}')
