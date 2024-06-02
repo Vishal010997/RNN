@@ -137,3 +137,17 @@ for epoch in range(num_epochs):
         print(f'Epoch {epoch}: No valid batches available.')
     else:
         print(f'Epoch {epoch} training loss: {loss_train:.4f} validation loss: {loss_valid:.4f}')
+
+
+
+# Function to filter out empty sequences
+def filter_empty_sequences(dataset):
+    filtered_dataset = []
+    for label, text in dataset:
+        if len(tokenizer(text)) > 0:
+            filtered_dataset.append((label, text))
+    return filtered_dataset
+
+# Apply the filter to the datasets
+train_dataset = filter_empty_sequences(train_dataset)
+test_dataset = filter_empty_sequences(test_dataset)
